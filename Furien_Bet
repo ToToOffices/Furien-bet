@@ -1,14 +1,14 @@
 #include <amxmodx>
 #include <cstrike>
 
-#define PLUGIN "Furien Bet Menu"
+#define PLUGIN "BetMenu"
 #define VERSION "1.2"
 #define AUTHOR "D3luxe"
 
 enum BET_TEAM
 {
-WIN_AFURIEN,
-WIN_FURIEN
+WIN_CT,
+WIN_T
 };
 
 new const TeamName[2][] =
@@ -38,11 +38,11 @@ for(new i = 0; i < num; i++)
 {
 id = Players[id];
 g_once[id] = false;
-g_winteam[id][WIN_AFURIEN] = false;
-g_winteam[id][WIN_FURIEN] = false
+g_winteam[id][WIN_CT] = false;
+g_winteam[id][WIN_T] = false
 }
-count_votes[WIN_AFURIEN] = 0;
-count_votes[WIN_FURIEN] = 0;
+count_votes[WIN_CT] = 0;
+count_votes[WIN_T] = 0;
 }
 public search_player()
 {
@@ -63,7 +63,7 @@ return PLUGIN_HANDLED;
 g_once[id] = true;
 set_task(get_pcvar_float(time_cancel),"cancel_this",id);
 new Text[555 char];
-formatex(Text,charsmax(Text),"\w[ \rFurien.Lastcs.Ro \w]^n\rFurien Bet Menu \w| \yCost Bet [ \r%d $ \y]",get_pcvar_num(cost));
+formatex(Text,charsmax(Text),"\rBet Menu \w| \yCost Bet [ \r%d $ \y]",get_pcvar_num(cost));
 menu = menu_create(Text, "bet_handler")
 formatex(Text,charsmax(Text),"\rPariaza pe \w%s \y[ \r%d \y]",TeamName[0],count_votes[WIN_CT]);
 menu_additem(menu, Text, "1")
@@ -90,18 +90,18 @@ switch(key)
 {
 case 1:
 {
-count_votes[WIN_AFURIEN]++;
-g_winteam[id][WIN_AFURIEN] = true;
+count_votes[WIN_CT]++;
+g_winteam[id][WIN_CT] = true;
 cs_set_user_money(id,cs_get_user_money(id) - get_pcvar_num(cost));
-set_hudmessage(0, 250, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Ai pariat pe echipa %s.",TeamName[0])
 }
 case 2:
 {
-count_votes[WIN_FURIRN]++;
-g_winteam[id][WIN_FURIEN] = true;
+count_votes[WIN_T]++;
+g_winteam[id][WIN_T] = true;
 cs_set_user_money(id,cs_get_user_money(id) - get_pcvar_num(cost));
-set_hudmessage(0, 250, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Ai pariat pe echipa %s.",TeamName[1])
 }
 }
@@ -121,13 +121,13 @@ for(new i = 0; i < num; i++)
 id = Players[i];
 if(g_winteam[id][WIN_CT])
 {
-set_hudmessage(0, 150, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Ai pierdut pariul.")
 }else if(g_winteam[id][WIN_T])
 {
 new winbet = (get_pcvar_num(cost) * count_votes[WIN_T]) - count_votes[WIN_CT]
 cs_set_user_money(id,cs_get_user_money(id) + winbet);
-set_hudmessage(0, 150, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Felicitari,ai castigat %d $ la pariu.",winbet)
 }
 }
@@ -141,13 +141,13 @@ for(new i = 0; i < num; i++)
 id = Players[i];
 if(g_winteam[id][WIN_T])
 {
-set_hudmessage(0, 150, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Ai pierdut pariul.")
 }else if(g_winteam[id][WIN_CT])
 {
 new winbet = (get_pcvar_num(cost) * count_votes[WIN_CT]) - count_votes[WIN_T]
 cs_set_user_money(id,cs_get_user_money(id) + winbet);
-set_hudmessage(0, 150, 255, -1.0, -1.0)
+set_hudmessage(0, 0, 255, -1.0, -1.0)
 show_hudmessage(id, "Felicitari,ai castigat %d $ la pariu.",winbet)
 }
 }
