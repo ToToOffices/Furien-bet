@@ -1,0 +1,59 @@
+[ • Dead Gift Box ]
+- la kill aleatoriu ai sansa de a pica un cufar cu diferite iteme. 
+- aceste cufere pot contine o suma aleatoriu de bani / dolari.
+- acestea mai contin o fantoma ce te va lasa fara viata sau fara bani / dolari.
+
+[ • Events Unique ]
+- Un event ce iti va afisa cuvinte aleatorii oe care daca reusesti sa le scrii in timpul afisat poti lua primul premiul.
+
+[ • Event: Furien Leader ]
+- In diferite runde aleatorii din ambele echipe este ales cate un Lider.
+(Furien cat si Anti Furien ).
+- Echipele trebuie sa il protejeze, daca acesta moare intreaga echipa va pierde.
+
+[• System Quest ]
+- un sistem cu diferite misiuni pe care poti sa le indeplinesti jucand, la indeplinirea misiuni vei fi rasplatit.
+- aceste misiuni sunt diferite pentru Furieni cat si pentru Anti Furieni.
+
+[ • Furien & Anti-Furien Class ] 
+- Un sistem de clase cu diferite ablitatinsinputeri,acestea le deblochezi acumuland kill-uri.
+
+[ • Power system ] M -> 3
+- adunand puncte poti creste in abilitati. ( attak / dmg )
+
+[ • Weapons CSO ]
+- Un meniu cu diferite arme pentru playeri cat si pentru cei cu VIP.
+- Pentru cei VIP armele sunt gratis. Iar jucători le pot accesa in event 19:00 23:00
+
+[ • Beneficii VIP ] 
+- experienta si dublu dolari in orice eveniment al jocului.
+- acces la arme speciale cso din meniu. ( /arme )
+- meniu cu diverse iteme. ( teleport, jetpack, hook, s.a.m.d )
+- damage marit cu 5%
+
+• #Iteme speciale din shop Anti-Furieni.
+- abilitatea de tinta precisa a furieni-lor. M-> 1 -> 7.
+- Spirit ghost maxim HP & AP + x2 dublujump. M-> 1->8 -> 1.
+
+In ultimul minut din echipa este ales un salvator:
+- acesta primeste defause kit si aura de a detecta Furienii invizibili.
+- acesta are obligatia de a gasi bomba si a o dezamorsa cat mai repede posibil.
+- iar in timpul dezamorsari bombei acesta va primi rezistenta imensa.
+
+
+• #Iteme speciale din shop Furieni.
+- Godknife acesta ofera un skin separat de ceilalti + HP & AP.
+- 50% Change to miss ai o posibilitate de 50% de a nu fi ranit de gloante.
+- abilitate de a te agata si mergand pe pereti folosind tasta E.
+
+In ultimul minut din echipa este ales un distrugator:
+- acesta are obligatia de a planta bomba si de a avea grija de ea pana la explozie.
+- are posibilitatea de a se deplasa invizibil folosind CTRL.
+
+Comenzi playeri:
+/rs -> sansa de a iti reseta decesele.
+/who -> afiseaza adminii online.
+/change -> posibilitate de a schimba echipa.
+/unstuck -> posibilitatea de a te debloca.
+/donate - nick - suma -> transferi dolari la un amic.
+/events -> iti afiseara eventurile in desfasurare si la ce ora incep / termina.
