@@ -1,0 +1,78 @@
+#include <amxmodx>
+#include <fakemeta>
+
+new g_iLevel[33]; // Pentru a stoca nivelurile jucătorilor
+
+// Functie pentru a crea meniul
+public show_menu(id)
+{
+    new menu, level = g_iLevel[id];
+
+    // Creăm meniul principal
+    menu = menu_create("Meniu Arme", "show_weapon_menu");
+
+    // Adăugăm opțiuni de arme în funcție de nivel
+    if (level >= 10)
+        menu_additem(menu, "Dual MP7A1", 4);
+    else
+        menu_additem(menu, "Dual MP7A1 (Blocat)", -1);
+
+    if (level >= 15)
+        menu_additem(menu, "M134", 5);
+    else
+        menu_additem(menu, "M134 (Blocat)", -1);
+
+    if (level >= 25)
+        menu_additem(menu, "AK47 Knife", 6);
+    else
+        menu_additem(menu, "AK47 Knife (Blocat)", -1);
+
+    if (level >= 35)
+        menu_additem(menu, "F2000", 7);
+    else
+        menu_additem(menu, "F2000 (Blocat)", -1);
+
+    menu_additem(menu, "Înapoi", 8);
+    menu_additem(menu, "Mai multe", 9);
+
+    // Afișăm meniul
+    show_menu(id, menu);
+}
+
+// Funcția care este apelată când jucătorul selectează o opțiune
+public show_weapon_menu(id, menuitem)
+{
+    switch (menuitem)
+    {
+        case 4:
+            client_print(id, print_chat, "Ai ales Dual MP7A1!");
+            // Aici adaugi codul pentru a da arma jucătorului
+            break;
+        case 5:
+            client_print(id, print_chat, "Ai ales M134!");
+            // Aici adaugi codul pentru a da arma jucătorului
+            break;
+        case 6:
+            client_print(id, print_chat, "Ai ales AK47 Knife!");
+            // Aici adaugi codul pentru a da arma jucătorului
+            break;
+        case 7:
+            client_print(id, print_chat, "Ai ales F2000!");
+            // Aici adaugi codul pentru a da arma jucătorului
+            break;
+        case 8:
+            // Codul pentru opțiunea "Înapoi"
+            client_print(id, print_chat, "Meniul a fost închis.");
+            break;
+        case 9:
+            // Codul pentru opțiunea "Mai multe"
+            client_print(id, print_chat, "Mai multe opțiuni!");
+            break;
+    }
+}
+
+// Funcție care setează nivelul jucătorilor
+public set_player_level(id, level)
+{
+    g_iLevel[id] = level;
+}
