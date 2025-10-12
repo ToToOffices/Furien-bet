@@ -1,0 +1,240 @@
+#include <amxmodx>
+#include <cstrike>
+
+#define PLUGIN "BetMenu"
+#define VERSION "1.3"
+#define AUTHOR "D3luxe / Fix by ChatGPT"
+
+enum BET_TEAM {
+    WIN_CT,
+    WIN_T
+};
+
+new const TeamName[2][] = {
+    "Counter-Terrorist",
+    "Terorist"
+};
+
+new g_winteam[33][BET_TEAM], count_votes[BET_TEAM];
+new bool:g_once[33], bool:g_hide_menu[33];
+new time_cancel, cost;
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    register_cvar("betmenu_version", VERSION, FCVAR_SERVER);
+
+    register_event("HLTV", "reset_all", "a", "1=0", "2=0");
+    register_event("SendAudio", "ev_TerroristWin", "a", "2=%!MRAD_terwin");
+    register_event("SendAudio", "ev_CtWin", "a", "2=%!MRAD_ctwin");
+
+    register_clcmd("say /bet", "cmd_bet");
+    register_clcmd("say_team /bet", "cmd_bet");
+
+    time_cancel = register_cvar("voting_time", "20");
+    cost = register_cvar("cost_participare", "1000");
+
+    set_task(1.0, "search_player", _, _, _, "b");
+}
+
+public client_disconnect(id)
+{
+    g_once[id] = false;
+    g_hide_menu[id] = false;
+    g_winteam[id][WIN_CT] = false;
+    g_winteam[id][WIN_T] = false;
+}
+
+public reset_all()
+{
+    new Players[32], num, id;
+    get_players(Players, num, "b");
+
+    for (new i = 0; i < num; i++) {
+        id = Players[i];
+        g_once[id] = false;
+        g_winteam[id][WIN_CT] = false;
+        g_winteam[id][WIN_T] = false;
+    }
+
+    count_votes[WIN_CT] = 0;
+    count_votes[WIN_T] = 0;
+}
+
+public search_player()
+{
+    new Players[32], num, id;
+    get_players(Players, num, "b");
+
+    for (new i = 0; i < num; i++) {
+        id = Players[i];
+        if (!g_once[id] && !is_user_alive(id) && !g_hide_menu[id] &&
+            (get_user_team(id) == 1 || get_user_team(id) == 2) &&
+            players_still_alive() >= 2)
+        {
+            set_task(1.0, "bet_menu", id);
+        }
+    }
+}
+
+public cmd_bet(id)
+{
+    if (is_user_alive(id)) {
+        client_print(id, print_chat, "[BetMenu] Nu poti paria in timp ce esti in viata.");
+        return PLUGIN_HANDLED;
+    }
+
+    if (g_once[id]) {
+        client_print(id, print_chat, "[BetMenu] Ai pariat deja sau timpul a expirat.");
+        return PLUGIN_HANDLED;
+    }
+
+    if (cs_get_user_money(id) < get_pcvar_num(cost)) {
+        client_print(id, print_chat, "[BetMenu] Nu ai suficienti bani pentru a paria.");
+        return PLUGIN_HANDLED;
+    }
+
+    bet_menu(id);
+    return PLUGIN_HANDLED;
+}
+
+public bet_menu(id)
+{
+    if (is_user_alive(id) || players_still_alive() < 2 || g_once[id])
+        return PLUGIN_HANDLED;
+
+    if (cs_get_user_money(id) < get_pcvar_num(cost)) {
+        client_print(id, print_chat, "[BetMenu] Nu ai suficienti bani pentru a paria.");
+        return PLUGIN_HANDLED;
+    }
+
+    g_once[id] = true;
+    set_task(Float:get_pcvar_float(time_cancel), "cancel_this", id);
+
+    new menu_text[128];
+    formatex(menu_text, charsmax(menu_text), "\rBet Menu \w| \yCost: \r%d$", get_pcvar_num(cost));
+    new menu = menu_create(menu_text, "bet_handler");
+
+    formatex(menu_text, charsmax(menu_text), "\rPariaza pe \w%s \y[ \r%d \y]", TeamName[WIN_CT], count_votes[WIN_CT]);
+    menu_additem(menu, menu_text, "0");
+
+    formatex(menu_text, charsmax(menu_text), "\rPariaza pe \w%s \y[ \r%d \y]", TeamName[WIN_T], count_votes[WIN_T]);
+    menu_additem(menu, menu_text, "1");
+
+    menu_additem(menu, "\rNu mai afisa meniul automat", "2");
+
+    menu_setprop(menu, MPROP_EXITNAME, "\yInchide");
+    menu_display(id, menu);
+    return PLUGIN_HANDLED;
+}
+
+public bet_handler(id, menu, item)
+{
+    if (item == MENU_EXIT || is_user_alive(id) || players_still_alive() < 2) {
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    new data[6], name[64];
+    new access, callback;
+    menu_item_getinfo(menu, item, access, data, charsmax(data), name, charsmax(name), callback);
+
+    new key = str_to_num(data);
+
+    if (key == 2) {
+        g_hide_menu[id] = true;
+        client_print(id, print_chat, "[BetMenu] Meniul de pariuri nu va mai fi afisat automat. Scrie /bet pentru a-l deschide manual.");
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    if (cs_get_user_money(id) < get_pcvar_num(cost)) {
+        client_print(id, print_chat, "[BetMenu] Nu ai destui bani pentru a paria.");
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    g_winteam[id][WIN_CT] = false;
+    g_winteam[id][WIN_T] = false;
+
+    new money = cs_get_user_money(id);
+
+    switch (key) {
+        case 0: { // CT
+            count_votes[WIN_CT]++;
+            g_winteam[id][WIN_CT] = true;
+            cs_set_user_money(id, money - get_pcvar_num(cost));
+            set_hudmessage(0, 0, 255, -1.0, 0.25);
+            show_hudmessage(id, "Ai pariat pe echipa %s.", TeamName[WIN_CT]);
+        }
+        case 1: { // T
+            count_votes[WIN_T]++;
+            g_winteam[id][WIN_T] = true;
+            cs_set_user_money(id, money - get_pcvar_num(cost));
+            set_hudmessage(0, 0, 255, -1.0, 0.25);
+            show_hudmessage(id, "Ai pariat pe echipa %s.", TeamName[WIN_T]);
+        }
+    }
+
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+}
+
+public cancel_this(id)
+{
+    g_once[id] = true;
+}
+
+public ev_TerroristWin()
+{
+    reward_players(WIN_T, WIN_CT);
+}
+
+public ev_CtWin()
+{
+    reward_players(WIN_CT, WIN_T);
+}
+
+public reward_players(winning_team, losing_team)
+{
+    new Players[32], num, id;
+    get_players(Players, num, "b");
+
+    for (new i = 0; i < num; i++) {
+        id = Players[i];
+
+        if (g_winteam[id][losing_team]) {
+            set_hudmessage(255, 0, 0, -1.0, 0.35);
+            show_hudmessage(id, "Ai pierdut pariul.");
+        } else if (g_winteam[id][winning_team]) {
+            new base_prize = get_pcvar_num(cost);
+            new total_winners = count_votes[winning_team];
+            new total_losers = count_votes[losing_team];
+            new winbet = base_prize;
+
+            if (total_winners > 0) {
+                new Float:bonus = float(base_prize * total_losers) / float(total_winners);
+                winbet += floatround(bonus);
+            }
+
+            new money = cs_get_user_money(id);
+            cs_set_user_money(id, money + winbet);
+            set_hudmessage(0, 255, 0, -1.0, 0.35);
+            show_hudmessage(id, "Felicitari! Ai castigat %d $ la pariu.", winbet);
+        }
+    }
+}
+
+stock players_still_alive()
+{
+    new count = 0;
+    new Players[32], num, id;
+    get_players(Players, num, "b");
+
+    for (new i = 0; i < num; i++) {
+        id = Players[i];
+        if (is_user_alive(id))
+            count++;
+    }
+    return count;
+}
