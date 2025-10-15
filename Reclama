@@ -3,3 +3,80 @@ Va astept pe serverele de mai jos, ambele cu moduri unice de joc.
 
 Xmas.Lastcs.Ro 82.77.209.96:27015
 Furien.Lastcs.Ro 82.77.209.93:27015
+
+#include <amxmodx>
+#include <cstrike>
+#include <fun>
+
+new const g_weapon_names[][] = {
+    "Thompson",
+    "Dual MP7A1",
+    "M134",
+    "AK47 Knife",
+    "F2000"
+}
+
+new const g_weapon_levels[] = {
+    0,     // Thompson
+    10,    // Dual MP7A1
+    15,    // M134
+    25,    // AK47 Knife
+    35     // F2000
+}
+
+public plugin_init() {
+    register_plugin("Level Weapon Menu", "1.0", "ChatGPT")
+    register_clcmd("say /guns", "show_weapon_menu")
+}
+
+public show_weapon_menu(id) {
+    new menu = menu_create("\ySelect Primary Weapon:", "menu_handler")
+
+    for (new i = 0; i < sizeof(g_weapon_names); i++) {
+        new item[64]
+        new level = g_weapon_levels[i]
+
+        if (get_user_level(id) >= level) {
+            formatex(item, charsmax(item), "\w%s", g_weapon_names[i])
+        } else {
+            formatex(item, charsmax(item), "\d%s - Locked (Level: %d)", g_weapon_names[i], level)
+        }
+
+        menu_additem(menu, item, fmt("%d", i))
+    }
+
+    menu_display(id, menu)
+}
+
+public menu_handler(id, menu, item) {
+    if (item == MENU_EXIT)
+        return PLUGIN_HANDLED
+
+    new data[6], name[64]
+    new access, callback
+
+    menu_item_getinfo(menu, item, access, data, charsmax(data), name, charsmax(name), callback)
+    new weapon_index = str_to_num(data)
+
+    if (get_user_level(id) < g_weapon_levels[weapon_index]) {
+        client_print(id, print_chat, "[Level System] You need level %d to unlock this weapon.", g_weapon_levels[weapon_index])
+        return PLUGIN_HANDLED
+    }
+
+    give_weapon(id, weapon_index)
+    return PLUGIN_HANDLED
+}
+
+stock get_user_level(id) {
+    // Simulat pentru test. Integrează cu XP plugin real.
+    return get_user_frags(id) / 5
+}
+
+stock give_weapon(id, weapon_index) {
+    // Adaugă aici logica pentru a da arma jucătorului
+    strip_user_weapons(id)
+    give_item(id, "weapon_ak47") // exemplu
+
+    client_print(id, print_chat, "[Level System] You received: %s", g_weapon_names[weapon_index])
+}
+
