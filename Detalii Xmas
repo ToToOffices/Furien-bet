@@ -1,0 +1,34 @@
+• La prima conectare primesti urmatoarele: 
+- Nivel: 7  și Puncte: 1800
+• In total pe server sunt 15 nivele.
+• Nivelele au scopul de a putea selecta o clasa noua.
+• Clasele se pot accesa cu comanda in chat "/class" sau pe tasta "M & 2".
+• Avansarea pe nivele consta in obiectivul de a ucide constant inamici [se ofera 2 puncte si 2% experienta pentru fiecare ucidere].
+
+• Pe server se desfasoara 2 tipuri de evenimente:
+• Round Event Se alege unul dintre cele 3 evenimente puse la dispozitie [disponibil prin vot]:
+- Discount Map
+- Double Map
+- Presents Map 
+Pentru a avea acces la detaliile amanuntite despre acest tip de eveniment scrii in chat "/event".
+
+• Al 2-lea tip de eveniment se desfasoara o data la 6 runde.
+"Snowball Event" - toti jucatorii primesc grenade incontinuu iar scopul este sa ucizi toti inamicii
+"Candy Event" - toti jucatorii primesc lame si hook [bind tasta +hook] iar scopul este sa ucizi toti inamicii
+"AWP Event" - toti jucatorii primesc awp cu scopul este de a ucide toti inamicii
+"Teleport Event" - jocul se desfasoara normal, doar ca ai abilitatea de a te teleporta [bind tasta teleport].
+"Protect the God" - este ales aleatoriu la fiecare echipa un lider, iar acesta primește 250HP, iar restul jucătorilor 50 HP, In caz ca liderul moare, echipa pierde, daca alt jucator moare acesta reinvie automat.
+"Găsește intrusul" - In aceasta rundă toți jucătorii primesc knife iar unu singur jucător este ales aleatoriu care va putea ucide pe oricine întâlnește, ceilalți trebuie să îl descopere și să îl oprească.(ucigandul)
+"Santa's Dream" - este ales aleatoriu din toti jucatorii un terorist [grinch] iar acesta primeste lama, restul de jucatori li se preia accesul la toate armele iar acestia trebuie sa gaseasca bradutii care sunt spawnati aleatoriu pe harta, grinch va vaneaza in acest timp, in cazul in care ati gasit toti bradutii, va duceti la mos craciun sa va luati cutitul si sa-l ucideti pe grinch.
+• Plus alte eventuri ce sunt prezentate în prima poza.
+
+Exista 3 tipuri speciale de magazine:" ele pot fi deschise cu comanda pe chat /items" sau "M -> 3 / 4 / 5.
+Daca se desfasoara evenimentul Discount, preturile la acest magazin sunt injumatatite.
+• Primul magazin nu poate fi folosit in timpul evenimentelor de runda.
+• La fel ca in magazinul precedent, aceste iteme se stocheaza in contul tau.
+• Pe harta ve-ti gasi anumite cadouri, din ele poti primi puteri pasive suplimentare:
+• In rundele normale un jucator este ales lider de la fiecare echipa, iar acesta primeste bonus de HP si AP,daca acesta este omorat, la toti jucatorii le scad potentialul de a castiga runda scazandu-le la toti jucatorii din echipa cu 25% viata.
+• La deces el scapa un brad [santa] sau un om de zapada [grinch], acesta daca este atins de catre un coechipier sunt sanse de 50% sa reinvie liderul.
+• Pe mapa sunt spawnate diferite cadouri cu diferse iteme, acestea consta in diferite puteri si abilitati.
+• Modul contine diferite modele pentru playeri, atat sunete specifice modului cat si effecte.
+• Voi mai reveni cu update la post cand va mai fi cate o modificare importanta.
