@@ -1,0 +1,71 @@
+include <amxmodx>
+#include <fakemeta>
+#include <fun>
+
+#define PLUGIN "Cold Event"
+#define VERSION "1.2"
+#define AUTHOR "ChatGPT"
+
+// --- Configurabile ---
+#define DAMAGE_PER_TICK 5       // cât HP se pierde
+#define TICK_INTERVAL 5.0       // la câte secunde se aplică frigul
+
+new bool:g_bColdEvent = false;
+new const g_szColdSound[] = "cold_event/breath.wav"; // Sunetul de respirație rece
+
+public plugin_precache()
+{
+    precache_sound(g_szColdSound);
+}
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+   // register_concmd("amx_cold", "cmdToggleCold", ADMIN_KICK, " - activează/dezactivează evenimentul de frig");
+    set_task(TICK_INTERVAL, "apply_cold_damage", _, _, _, "b");
+}
+
+public cmdToggleCold(id, level, cid)
+{
+   // if (!cmd_access(id, level, cid, 1))
+        //return PLUGIN_HANDLED;
+
+    g_bColdEvent = !g_bColdEvent;
+
+    if (g_bColdEvent)
+        client_print(0, print_chat, "[Cold Event] A început frigul! ❄️ Aveți grijă la viață!")
+    else
+        client_print(0, print_chat, "[Cold Event] Frigul a trecut, puteți respira ușurați!");
+
+    return PLUGIN_HANDLED;
+}
+
+public apply_cold_damage()
+{
+    if (!g_bColdEvent)
+        return;
+
+    new players[32], pnum;
+    get_players(players, pnum, "a"); // doar jucătorii vii
+
+    for (new i = 0; i < pnum; i++)
+    {
+        new id = players[i];
+        new health = get_user_health(id);
+
+        if (health > DAMAGE_PER_TICK)
+        {
+            set_user_health(id, health - DAMAGE_PER_TICK);
+
+            // Sunetul se aude și pentru cei din jur (3D positional sound)
+            emit_sound(id, CHAN_BODY, g_szColdSound, 1.0, ATTN_NORM, 0, PITCH_NORM);
+
+            client_print(id, print_center, "E frig... Pierzi %d HP!", DAMAGE_PER_TICK);
+        }
+        else
+        {
+            user_kill(id, 1);
+            client_print(id, print_center, "Ai murit din cauza frigului! ❄️");
+        }
+    }
+}
