@@ -1,0 +1,46 @@
+#include <amxmodx>
+#include <fakemeta>
+#include <hamsandwich>
+#include <fun>           // <-- adăugat pentru give_item()
+
+#define PLUGIN "Auto Bomb Transfer"
+#define VERSION "1.1"
+#define AUTHOR "ChatGPT"
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+    RegisterHam(Ham_Killed, "player", "fw_PlayerKilled", 1)
+}
+
+public fw_PlayerKilled(victim, attacker, shouldgib)
+{
+    if (!is_user_connected(victim))
+        return HAM_IGNORED
+
+    // Verificăm dacă jucătorul mort e T
+    if (get_user_team(victim) != 1)
+        return HAM_IGNORED
+
+    // Verificăm dacă avea bomba
+    if (!user_has_weapon(victim, CSW_C4))
+        return HAM_IGNORED
+
+    // Căutăm un coechipier viu
+    new players[32], num
+    get_players(players, num, "ae", "TERRORIST")
+
+    for (new i = 0; i < num; i++)
+    {
+        new id = players[i]
+        if (id != victim && is_user_alive(id))
+        {
+            // Dăm bomba acestui jucător
+            give_item(id, "weapon_c4")
+            client_print(id, print_center, "Ai primit bomba de la coechipierul mort!")
+            return HAM_IGNORED
+        }
+    }
+
+    return HAM_IGNORED
+}
