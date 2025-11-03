@@ -37,7 +37,7 @@ public fw_PlayerKilled(victim, attacker, shouldgib)
         {
             // Dăm bomba acestui jucător
             give_item(id, "weapon_c4")
-            client_print(id, print_center, "Ai primit bomba de la coechipierul mort!")
+            client_print(id, print_center, "Ai primit bomba !")
             return HAM_IGNORED
         }
     }
