@@ -1,0 +1,232 @@
+#include <amxmodx>
+#include <fakemeta>
+#include <fun>
+#include <hamsandwich>
+
+#define PLUGIN "Abilities Final"
+#define VERSION "6.0"
+#define AUTHOR "ChatGPT"
+
+// ------------------ GLOBALS ------------------
+new g_PlayerAbility[33];      // abilitatea aleasă de jucător
+new g_DubluraTarget[33];      // pentru Farsour dublură
+new g_FreezeTarget[33];       // pentru Bone Freezer
+new g_GlowTarget[33];         // pentru Doctor glow
+new g_TimeSlicerUsed[33];     // pentru teleport o singura data per runda
+new g_heal_sprite;
+
+// ------------------ INIT ------------------
+public plugin_precache() {
+    g_heal_sprite = precache_model("sprites/shockwave.spr");
+    precache_sound("doctor/heal_aura.wav");
+    precache_model("sprites/steam1.spr");
+    precache_sound("weapons/pistol1.wav");
+}
+
+public plugin_init() {
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+
+    register_clcmd("say /abilitati", "cmdAbilities");
+    register_clcmd("say_team /abilitati", "cmdAbilities");
+
+    RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn", 1);
+    RegisterHam(Ham_Killed, "player", "fw_PlayerKilled", 1);
+    register_event("Round_End", "fw_EndRound", "a");
+}
+
+// ------------------ MENIU ------------------
+public cmdAbilities(id) {
+    if (!is_user_alive(id)) {
+        client_print(id, print_chat, "[Abilities] Trebuie sa fii in viata pentru a folosi meniul.");
+        return PLUGIN_HANDLED;
+    }
+
+    new menu = menu_create("Alege o abilitate:", "menu_handler");
+    menu_additem(menu, "1. Wolf Man - Damage marit", "1");
+    menu_additem(menu, "2. Silent Step - Nu se aud pasii", "2");
+    menu_additem(menu, "3. Slade - Speed marit", "3");
+    menu_additem(menu, "4. Hulk - Gravitate scazuta", "4");
+    menu_additem(menu, "5. Time Slicer - Teleport o data pe runda", "5");
+    menu_additem(menu, "6. Farsour - Farseaza un jucator", "6");
+    menu_additem(menu, "7. Bone Freezer - Ingheata inamicul", "7");
+    menu_additem(menu, "8. Clayton - Invizibilitate", "8");
+    menu_additem(menu, "9. Doctor - Vindeca echipa", "9");
+    menu_display(id, menu);
+    return PLUGIN_HANDLED;
+}
+
+public menu_handler(id, menu, item) {
+    if (item == MENU_EXIT) {
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    new info[3];
+    menu_item_getinfo(menu, item, _, info, charsmax(info));
+    new key = str_to_num(info);
+
+    g_PlayerAbility[id] = key;
+    apply_ability(id, key);
+    client_print(id, print_chat, "[Abilities] Abilitatea %d activata pentru aceasta runda!", key);
+
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+}
+
+// ------------------ HANDLERE ------------------
+public fw_PlayerSpawn(id) {
+    if (!is_user_alive(id)) return HAM_IGNORED;
+    if (g_PlayerAbility[id] > 0) apply_ability(id, g_PlayerAbility[id]);
+    return HAM_IGNORED;
+}
+
+public fw_PlayerKilled(victim, attacker, shouldgib) {
+    g_PlayerAbility[victim] = 0;
+    g_DubluraTarget[victim] = 0;
+    g_FreezeTarget[victim] = 0;
+    g_GlowTarget[victim] = 0;
+    g_TimeSlicerUsed[victim] = 0;
+    return HAM_IGNORED;
+}
+
+public fw_EndRound() {
+    for (new i = 1; i <= 32; i++) {
+        g_PlayerAbility[i] = 0;
+        g_DubluraTarget[i] = 0;
+        g_FreezeTarget[i] = 0;
+        g_GlowTarget[i] = 0;
+        g_TimeSlicerUsed[i] = 0;
+    }
+}
+
+// ------------------ ABILITĂȚI ------------------
+public apply_ability(id, ability) {
+    switch (ability) {
+        case 1: set_user_health(id, get_user_health(id)+30);                  // Wolf Man
+        case 2: set_user_footsteps(id, 1);                                   // Silent Step
+        case 3: set_user_maxspeed(id, 400.0);                                // Slade
+        case 4: set_user_gravity(id, 0.5);                                   // Hulk
+        case 5: teleport_player(id);                                         // Time Slicer
+        case 6: make_prank(id);                                              // Farsour
+        case 7: freeze_enemy(id);                                            // Bone Freezer
+        case 8: set_user_rendering(id, kRenderFxNone,0,0,0,kRenderTransAlpha,0); // Clayton
+        case 9: heal_teammates(id);                                          // Doctor
+    }
+}
+
+// ------------------ TELEPORT ------------------
+public teleport_player(id) {
+    if (g_TimeSlicerUsed[id]) {
+        client_print(id, print_chat, "[Time Slicer] Ai folosit deja teleportul in aceasta runda!");
+        return;
+    }
+    g_TimeSlicerUsed[id] = 1;
+
+    new Float:origin[3];
+    get_user_origin(id, origin);
+    origin[2]+=200.0;
+    set_user_origin(id, origin);
+
+    client_print(id, print_chat, "[Time Slicer] Teleport efectuat!");
+}
+
+// ------------------ BONE FREEZER ------------------
+public freeze_enemy(id){
+    new players[32], pnum;
+    get_players(players, pnum, "ae", "TERRORIST");
+    if (pnum>0){
+        new target = players[random(pnum)];
+        g_FreezeTarget[target]=1;
+        set_user_maxspeed(target, 1.0);
+        client_print(id, print_chat, "[Bone Freezer] Ai inghetat un inamic 5 sec!");
+        set_task(5.0, "unfreeze_task");
+    }
+}
+
+public unfreeze_task(){
+    for(new i=1;i<=32;i++){
+        if(g_FreezeTarget[i]){
+            if(is_user_alive(i))
+                set_user_maxspeed(i,250.0);
+            g_FreezeTarget[i]=0;
+        }
+    }
+}
+
+// ------------------ DOCTOR ------------------
+public heal_teammates(id){
+    new players[32], pnum;
+    get_players(players,pnum,"ae","CT");
+    create_heal_effect(id);
+    for(new i=0;i<pnum;i++){
+        new mate=players[i];
+        if(mate!=id && is_user_alive(mate)){
+            set_user_health(mate,min(get_user_health(mate)+25,100));
+            g_GlowTarget[mate]=1;
+        }
+    }
+    emit_sound(id,CHAN_AUTO,"doctor/heal_aura.wav",1.0,ATTN_NORM,0,PITCH_NORM);
+    set_task(3.0,"remove_glow_task");
+}
+
+public remove_glow_task(){
+    for(new i=1;i<=32;i++){
+        if(g_GlowTarget[i]){
+            if(is_user_alive(i))
+                set_user_rendering(i,kRenderFxNone,0,0,0,kRenderNormal,0);
+            g_GlowTarget[i]=0;
+        }
+    }
+}
+
+// ------------------ FARSOUR (dublură vizuală) ------------------
+public make_prank(id){
+    if(!is_user_alive(id)) return;
+
+    g_DubluraTarget[id]=1;
+    new Float:origin[3];
+    get_user_origin(id, origin);
+    origin[2]+=50.0;
+
+    message_begin(MSG_ONE,SVC_TEMPENTITY,_,id);
+    write_byte(TE_SPRITE);
+    write_coord(origin[0]);
+    write_coord(origin[1]);
+    write_coord(origin[2]);
+    write_short(g_heal_sprite);
+    write_byte(20); 
+    write_byte(255); 
+    write_byte(255);
+    write_byte(255);
+    write_byte(128);
+    message_end();
+
+    client_print(id, print_chat, "[Farsour] Dublura vizuala creata!");
+    set_task(2.0,"remove_dublura_task");
+}
+
+public remove_dublura_task(){
+    for(new i=1;i<=32;i++){
+        if(g_DubluraTarget[i]){
+            g_DubluraTarget[i]=0;
+        }
+    }
+}
+
+// ------------------ EFECTE ------------------
+public create_heal_effect(id){
+    new Float:origin[3];
+    get_user_origin(id, origin);
+    message_begin(MSG_ONE, SVC_TEMPENTITY, _, id);
+    write_byte(TE_SPRITE);
+    write_coord(origin[0]);
+    write_coord(origin[1]);
+    write_coord(origin[2]+32.0);
+    write_short(g_heal_sprite);
+    write_byte(10);
+    write_byte(255);
+    write_byte(255);
+    write_byte(255);
+    write_byte(128);
+    message_end();
+}
