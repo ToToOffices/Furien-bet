@@ -1,0 +1,125 @@
+new bool:g_bSpecial[33], g_ModelIndex[2]
+
+#include amxmodx
+#include reapi
+
+
+public client_putinserver(id) g_bSpecial[id] = false
+
+public plugin_init() {
+    RegisterHookChain(RG_CSGameRules_RestartRound, "RG_RoundStart", 1)
+    RegisterHookChain(RG_RoundEnd, "RG_RoundEnded", 1)
+    RegisterHookChain(RG_CBasePlayer_SetClientUserInfoModel, "RG_SetClientUserInfoModel")
+}
+
+
+#define T_CLASS "Grinch"
+#define CT_CLASS "Mos Craciun"
+
+#define T_MODEL "arctic"
+#define CT_MODEL "sas"
+
+#define HEALTH 150.0
+
+#define T_PRIMARY_WPN "weapon_ak47"
+#define CT_PRIMARY_WPN "weapon_m4a1"
+
+#define SECONDARY_WPN "weapon_deagle"
+#define SECONDARY_WPNtype WEAPON_DEAGLE
+
+#define T_PRIMARY_WPNtype WEAPON_AK47
+#define CT_PRIMARY_WPNtype WEAPON_M4A1
+
+#define PRIMARY_AMMO 140
+#define SECONDARY_AMMO 55
+
+#define ROUNDS 2
+
+#define TEAM_T "TERRORIST"
+#define TEAM_CT "CT"
+
+
+set_player_model(id, team[]) {
+    if (equali(team, TEAM_T)) rg_set_user_model(id, T_MODEL, true)
+    else if (equali(team, TEAM_CT)) rg_set_user_model(id, CT_MODEL, true)
+}
+
+public RG_SetClientUserInfoModel(id, infobuffer[], newmodel[]) {
+    if (!is_user_alive(id) || !g_bSpecial[id]) return
+
+    static team; team = get_member(id, m_iTeam)
+    if (team == 1) {
+        SetHookChainArg(3, ATYPE_STRING, T_MODEL)
+        set_entvar(id, var_modelindex, g_ModelIndex[0])
+    }
+    else if (team == 2) {
+        SetHookChainArg(3, ATYPE_STRING, CT_MODEL)
+        set_entvar(id, var_modelindex, g_ModelIndex[1])
+    }
+}
+
+public plugin_precache() {
+    new buffer[110]
+    
+    formatex(buffer, 110, "models/player/%s/%s.mdl", T_MODEL, T_MODEL)
+    if (file_exists(buffer)) g_ModelIndex[0] = precache_model(buffer)
+    else set_fail_state("[T] %s NU A FOST GASIT!!", buffer)
+
+    formatex(buffer, 110, "models/player/%s/%s.mdl", CT_MODEL, CT_MODEL)
+    if (file_exists(buffer)) g_ModelIndex[1] = precache_model(buffer)
+    else set_fail_state("[CT] %s NU A FOST GASIT!!", buffer)
+}
+
+
+public RG_RoundStart() set_task(0.007, "Task_GetPlayers")
+
+public Task_GetPlayers() {
+    BecomeSpecial(TEAM_T, T_CLASS)
+    BecomeSpecial(TEAM_CT, CT_CLASS)
+}
+
+BecomeSpecial(team[], class[]) {
+    static players[32], num
+    get_players(players, num, "ae", team)
+
+    if (!num) return
+
+    static id; id = players[random(num)]
+
+    set_player_model(id, team)
+
+    g_bSpecial[id] = true
+
+    static name[32]; get_user_name(id, name, 32)
+    client_print_color(0, 0, "^3[^4%s^3]^1 Jucatorul^4 %s^1 a devenit un^3 %s^1!!", team, name, class)
+
+    set_entvar(id, var_health, HEALTH)
+
+    rg_give_item(id, "weapon_hegrenade")
+    rg_give_item(id, "weapon_flashbang")
+    rg_give_item(id, "weapon_smokegrenade")
+  
+    rg_give_item(id, SECONDARY_WPN, GT_REPLACE)
+    rg_set_user_bpammo(id, SECONDARY_WPNtype, SECONDARY_AMMO)
+
+    if (get_member_game(m_iTotalRoundsPlayed) < ROUNDS) return
+
+    if (equali(class, T_CLASS)) {
+        rg_give_item(id, T_PRIMARY_WPN, GT_REPLACE)
+        rg_set_user_bpammo(id, T_PRIMARY_WPNtype, PRIMARY_AMMO)
+    }
+    else if (equali(class, CT_CLASS)) {
+        rg_give_item(id, CT_PRIMARY_WPN, GT_REPLACE)
+        rg_set_user_bpammo(id, CT_PRIMARY_WPNtype, PRIMARY_AMMO)
+    }
+}
+
+public RG_RoundEnded() {
+    static id
+    for (id = 1; id <= MaxClients; id++) {
+        if (!is_user_connected(id) || !g_bSpecial[id]) continue
+
+        g_bSpecial[id] = false
+        rg_reset_user_model(id, true)
+    }
+}
