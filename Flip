@@ -2,42 +2,44 @@
 #include <fakemeta>
 
 public plugin_init() {
-    register_plugin("Jump Model Flip", "1.0", "ChatGPT");
+    register_plugin("Jump Model Flip", "2.0", "ChatGPT");
     register_forward(FM_PlayerPreThink, "fw_PlayerPreThink");
 }
 
-new bool:g_isFlipping[33];
+new Float:g_fRotation[33];    // unghiul curent de rotație
+new bool:g_bInAir[33];        // dacă e în aer
+new const Float:ROTATE_SPEED = 25.0; // viteză rotație (grade pe frame)
 
-public fw_PlayerPreThink(id) {
+public fw_PlayerPreThink(id)
+{
     if (!is_user_alive(id))
         return;
-
-    static Float:velocity[3];
-    pev(id, pev_velocity, velocity);
 
     static flags;
     flags = pev(id, pev_flags);
 
-    // Dacă e în aer (nu e pe sol)
+    // Dacă e în aer
     if (!(flags & FL_ONGROUND)) {
-        if (!g_isFlipping[id]) {
-            g_isFlipping[id] = true;
-
-            static Float:angles[3];
-            pev(id, pev_angles, angles);
-
-            // Face un flip peste cap (180 de grade pe axa X)
-            angles[0] += 180.0;
-            if (angles[0] > 180.0) angles[0] -= 360.0;
-
-            set_pev(id, pev_angles, angles);
+        if (!g_bInAir[id]) {
+            g_bInAir[id] = true;
         }
-    } 
-    else {
-        if (g_isFlipping[id]) {
-            g_isFlipping[id] = false;
 
-            // Revine la unghiul normal
+        // Crește treptat unghiul
+        g_fRotation[id] += ROTATE_SPEED;
+        if (g_fRotation[id] >= 360.0)
+            g_fRotation[id] -= 360.0;
+
+        static Float:angles[3];
+        pev(id, pev_angles, angles);
+        angles[0] = g_fRotation[id];  // rotește peste axa X
+        set_pev(id, pev_angles, angles);
+    }
+    else {
+        // Revine la sol
+        if (g_bInAir[id]) {
+            g_bInAir[id] = false;
+            g_fRotation[id] = 0.0;
+
             static Float:angles[3];
             pev(id, pev_angles, angles);
             angles[0] = 0.0;
