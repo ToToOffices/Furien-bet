@@ -1,0 +1,47 @@
+#include <amxmodx>
+#include <fakemeta>
+
+public plugin_init() {
+    register_plugin("Jump Model Flip", "1.0", "ChatGPT");
+    register_forward(FM_PlayerPreThink, "fw_PlayerPreThink");
+}
+
+new bool:g_isFlipping[33];
+
+public fw_PlayerPreThink(id) {
+    if (!is_user_alive(id))
+        return;
+
+    static Float:velocity[3];
+    pev(id, pev_velocity, velocity);
+
+    static flags;
+    flags = pev(id, pev_flags);
+
+    // Dacă e în aer (nu e pe sol)
+    if (!(flags & FL_ONGROUND)) {
+        if (!g_isFlipping[id]) {
+            g_isFlipping[id] = true;
+
+            static Float:angles[3];
+            pev(id, pev_angles, angles);
+
+            // Face un flip peste cap (180 de grade pe axa X)
+            angles[0] += 180.0;
+            if (angles[0] > 180.0) angles[0] -= 360.0;
+
+            set_pev(id, pev_angles, angles);
+        }
+    } 
+    else {
+        if (g_isFlipping[id]) {
+            g_isFlipping[id] = false;
+
+            // Revine la unghiul normal
+            static Float:angles[3];
+            pev(id, pev_angles, angles);
+            angles[0] = 0.0;
+            set_pev(id, pev_angles, angles);
+        }
+    }
+}
