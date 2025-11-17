@@ -1,0 +1,36 @@
+stock ChatColor(const id, const input[], any:...)
+{
+    new players[32], count, msg[191];
+
+    // Formatam textul
+    vformat(msg, charsmax(msg), input, 3);
+
+    replace_all(msg, charsmax(msg), "!g", "^4");
+    replace_all(msg, charsmax(msg), "!y", "^1");
+    replace_all(msg, charsmax(msg), "!team", "^3");
+
+    // Dacă ID-ul e 0 -> trimitem tuturor
+    if (id == 0)
+    {
+        get_players(players, count, "ch");
+    }
+    else
+    {
+        players[0] = id;
+        count = 1;
+    }
+
+    // Trimitem mesajul
+    for (new i = 0; i < count; i++)
+    {
+        if (is_user_connected(players[i]))
+        {
+            message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("SayText"), _, players[i]);
+            write_byte(players[i]);
+            write_string(msg);
+            message_end();
+        }
+    }
+
+    return 1;
+}
