@@ -1,0 +1,184 @@
+#include <amxmodx>
+#include <hamsandwich>
+#include <fun>
+#include <cstrike>
+
+// ----------------------------
+// EVENIMENTE
+// ----------------------------
+new const random_name_events[][] =
+{
+    "Nici-un eveniment",
+    "Dublu Bani",
+    "Boost Nivel",
+    "Ucide tinta",
+    "Misiune Random",
+    "Free VIP"
+};
+
+new g_current_event;
+new g_target;
+new g_player_mission[33];
+new bool:g_double_money;
+
+// ----------------------------
+// PROTOTIPURI pentru XP (DOLARI)
+// ----------------------------
+native set_dollars(id, amount);
+native get_dollars(id);
+
+// ----------------------------
+public plugin_init()
+{
+    register_plugin("Evenimente Furien XP", "1.0", "ChatGPT");
+
+    RegisterHam(Ham_RoundStart, "player", "OnRoundStart", 1);
+    RegisterHam(Ham_Killed,     "player", "OnPlayerKilled", 1);
+}
+
+// ----------------------------
+// GENERAREA EVENIMENTULUI
+// ----------------------------
+public OnRoundStart(id)
+{
+    g_current_event = random(sizeof random_name_events);
+    g_double_money = false;
+    g_target = 0;
+
+    for (new i = 1; i <= 32; i++)
+        g_player_mission[i] = 0;
+
+    switch (g_current_event)
+    {
+        // Dublu bani = 2x dolari pe kill
+        case 1: g_double_money = true;
+
+        // Boost nivel → +50 XP (dolari)
+        case 2:
+        {
+            new players[32], num;
+            get_players(players, num, "a");
+
+            for (new i = 0; i < num; i++)
+            {
+                new id = players[i];
+                new xp = get_dollars(id);
+                set_dollars(id, xp + 50);
+
+                client_print(id, print_chat, "[BOOST NIVEL] Ai primit +50 XP!");
+            }
+        }
+
+        // Ucide tinta
+        case 3: SetRandomTarget();
+
+        // Misiuni random
+        case 4: SetMissions();
+
+        // Free VIP arme
+        case 5: GiveAllVIP();
+    }
+
+    // HUD la toți
+    set_hudmessage(0, 255, 0, -1.0, 0.20, 1, 6.0, 6.0);
+    show_hudmessage(0, "[EVENIMENT RUNDĂ]\n%s", random_name_events[g_current_event]);
+}
+
+// ----------------------------
+// KILL HANDLER
+// ----------------------------
+public OnPlayerKilled(victim, attacker)
+{
+    if (!is_user_alive(attacker)) return;
+
+    // Dublu bani
+    if (g_double_money)
+    {
+        new xp = get_dollars(attacker);
+        set_dollars(attacker, xp + 20); // bonus +20 XP (dolari)
+        client_print(attacker, print_center, "Dublu bani! +20 XP bonus!");
+    }
+
+    // Misiune 
+    if (g_player_mission[attacker] > 0)
+    {
+        g_player_mission[attacker]--;
+
+        if (g_player_mission[attacker] == 0)
+        {
+            new xp = get_dollars(attacker);
+            set_dollars(attacker, xp + 40);
+            client_print(attacker, print_chat, "[MISUNE] Ai terminat misiunea! +40 XP!");
+        }
+    }
+
+    // Uciderea țintei
+    if (victim == g_target)
+    {
+        new xp = get_dollars(attacker);
+        set_dollars(attacker, xp + 60);
+
+        client_print(attacker, print_chat, "[TINTA] Ai ucis tinta! +60 XP!");
+    }
+}
+
+// ----------------------------
+// Ucide ținta → alege un jucător
+// ----------------------------
+stock SetRandomTarget()
+{
+    new players[32], num;
+    get_players(players, num, "a");
+
+    if (num < 1) return;
+
+    g_target = players[random(num)];
+
+    new name[32];
+    get_user_name(g_target, name, charsmax(name));
+
+    client_print(0, print_center, "Tinta acestei runde: %s!", name);
+}
+
+// ----------------------------
+// Misiune random
+// ----------------------------
+stock SetMissions()
+{
+    new players[32], num;
+    get_players(players, num, "a");
+
+    for (new i = 0; i < num; i++)
+    {
+        new id = players[i];
+        g_player_mission[id] = random_num(1, 3); // 1–3 killuri
+
+        client_print(id, print_chat,
+        "[MISIUNE] Omoara %d inamici pentru +40 XP!",
+        g_player_mission[id]);
+    }
+}
+
+// ----------------------------
+// Free VIP → arme + armură
+// ----------------------------
+stock GiveAllVIP()
+{
+    new players[32], num;
+    get_players(players, num, "a");
+
+    for (new i = 0; i < num; i++)
+    {
+        new id = players[i];
+
+        give_item(id, "weapon_m4a1");
+        give_item(id, "weapon_deagle");
+        give_item(id, "item_assaultsuit");
+
+        cs_set_user_bpammo(id, CSW_M4A1, 90);
+        cs_set_user_bpammo(id, CSW_DEAGLE, 35);
+
+        client_print(id, print_chat,
+        "[VIP] Ai primit arme VIP pentru această rundă!");
+    }
+}
