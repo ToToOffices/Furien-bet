@@ -1,0 +1,94 @@
+#include <amxmodx>
+#include <engine>
+#include <fakemeta>
+
+#define SANTA_MODEL "models/santa_sleigh.mdl"
+#define SANTA_SPEED 250.0
+#define THINK_INTERVAL 0.1
+
+new g_santa;
+
+public plugin_init() {
+    register_plugin("Flying Santa Sleigh", "1.0", "ChatGPT");
+
+    // Spawnăm Santa la începutul hărții
+    set_task(2.0, "spawn_santa");
+}
+
+public plugin_precache() {
+    precache_model(SANTA_MODEL);
+}
+
+public spawn_santa() {
+    if (g_santa && is_valid_ent(g_santa))
+        remove_entity(g_santa);
+
+    g_santa = create_entity("info_target");
+
+    if (!g_santa)
+        return;
+
+    entity_set_string(g_santa, EV_SZ_classname, "santa_sleigh");
+    entity_set_model(g_santa, SANTA_MODEL);
+
+    // Setăm dimensiunile
+    entity_set_size(g_santa, Float:{-16.0, -16.0, -16.0}, Float:{16.0, 16.0, 16.0});
+
+    // Poziția inițială (deasupra hartii)
+    new Float:origin[3];
+    origin[0] = 0.0;
+    origin[1] = 0.0;
+    origin[2] = 250.0;
+
+    entity_set_origin(g_santa, origin);
+
+    // Direcția inițială
+    new Float:velocity[3];
+    velocity[0] = SANTA_SPEED;
+    velocity[1] = 0.0;
+    velocity[2] = 0.0;
+
+    entity_set_vector(g_santa, EV_VEC_velocity, velocity);
+
+    // Setăm funcția de zbor (think)
+    entity_set_float(g_santa, EV_FL_nextthink, halflife_time() + THINK_INTERVAL);
+    register_think("santa_sleigh", "santa_think");
+}
+
+public santa_think(ent) {
+    if (!is_valid_ent(ent))
+        return;
+
+    new Float:origin[3];
+    new Float:mins[3], Float:maxs[3];
+
+    entity_get_vector(ent, EV_VEC_origin, origin);
+    entity_get_vector(ent, EV_VEC_mins, mins);
+    entity_get_vector(ent, EV_VEC_maxs, maxs);
+
+    // Dacă ajunge la marginea hărții → schimbă direcția
+    if (origin[0] < -3000.0 || origin[0] > 3000.0) {
+        reverse_axis_velocity(ent, 0);
+    }
+    if (origin[1] < -3000.0 || origin[1] > 3000.0) {
+        reverse_axis_velocity(ent, 1);
+    }
+
+    // Mică ondulare (zbor realist)
+    new Float:velocity[3];
+    entity_get_vector(ent, EV_VEC_velocity, velocity);
+
+    velocity[2] = floatsin(halflife_time() * 2.0) * 40.0;
+
+    entity_set_vector(ent, EV_VEC_velocity, velocity);
+
+    // Continuăm think
+    entity_set_float(ent, EV_FL_nextthink, halflife_time() + THINK_INTERVAL);
+}
+
+stock reverse_axis_velocity(ent, axis) {
+    new Float:vel[3];
+    entity_get_vector(ent, EV_VEC_velocity, vel);
+    vel[axis] = -vel[axis];
+    entity_set_vector(ent, EV_VEC_velocity, vel);
+}
