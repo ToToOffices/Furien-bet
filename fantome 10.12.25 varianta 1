@@ -1,0 +1,245 @@
+#include <amxmodx>
+#include <engine>
+#include <fakemeta>
+#include <hamsandwich>
+
+#define GHOST_COUNT 3
+
+// modele diferite pentru fantome
+new const GHOST_MODELS[][] = {
+    "models/ghost1.mdl",
+    "models/ghost2.mdl",
+    "models/ghost3.mdl"
+};
+#define GHOST_MODELS_COUNT sizeof(GHOST_MODELS)
+
+// sunet atac
+#define GHOST_SOUND "ghost/attack.wav"
+
+// sunet day / night
+#define SOUND_NIGHT "ghost/night_start.wav"
+#define SOUND_DAY   "ghost/day_start.wav"
+
+// parametri fantomă
+new Float:g_targetRadius = 650.0
+new Float:g_attackDistance = 80.0
+new Float:g_attackDamage = 15.0
+new Float:g_ghostSpeed = 220.0
+
+// entități fantome
+new g_ghost[GHOST_COUNT]
+
+// zi/noapte
+new bool:isNight = false
+new Float:cycleTime = 60.0 // cât ține ziua sau noaptea
+
+public plugin_precache()
+{
+    for (new i = 0; i < GHOST_MODELS_COUNT; i++)
+        precache_model(GHOST_MODELS[i])
+
+    precache_sound(GHOST_SOUND)
+    precache_model("sprites/lgtning.spr")
+
+    precache_sound(SOUND_NIGHT)
+    precache_sound(SOUND_DAY)
+
+}
+
+public plugin_init()
+{
+    register_plugin("Ghost Day/Night System", "1.0", "ChatGPT")
+
+    set_task(cycleTime, "ToggleDayNight", _, _, _, "b")  
+    set_task(0.1, "GhostThink", _, _, _, "b")
+}
+
+public ToggleDayNight()
+{
+    isNight = !isNight
+
+    if (isNight)
+    {
+        // Sunet trecere NOAPTE
+        emit_sound(0, CHAN_AUTO, SOUND_NIGHT, 1.0, ATTN_NONE, 0, PITCH_NORM)
+
+        ColorChat(0, "^4[SERVER]^1 A venit ^3NOAPTEA^1... fantomele cutreiera harta!")
+        SpawnAllGhosts()
+    }
+    else
+    {
+        // Sunet trecere ZI
+        emit_sound(0, CHAN_AUTO, SOUND_DAY, 1.0, ATTN_NONE, 0, PITCH_NORM)
+
+        ColorChat(0, "^4[SERVER]^1 A venit ^3ZIUA^1... fantomele au disparut.")
+        RemoveAllGhosts()
+    }
+}
+
+
+public SpawnAllGhosts()
+{
+    for (new i = 0; i < GHOST_COUNT; i++)
+        SpawnGhost(i)
+}
+
+public SpawnGhost(index)
+{
+    if (!isNight) return
+    if (pev_valid(g_ghost[index])) return
+
+    new Float:origin[3]
+    origin[0] = random_float(-500.0, 500.0)
+    origin[1] = random_float(-500.0, 500.0)
+    origin[2] = 50.0
+
+    g_ghost[index] = create_entity("info_target")
+    if (!pev_valid(g_ghost[index])) return
+
+    // model random
+    new modelIndex = random(GHOST_MODELS_COUNT)
+    engfunc(EngFunc_SetModel, g_ghost[index], GHOST_MODELS[modelIndex])
+
+    set_pev(g_ghost[index], pev_classname, "ghost_entity")
+    set_pev(g_ghost[index], pev_movetype, MOVETYPE_FLY)
+    set_pev(g_ghost[index], pev_solid, SOLID_TRIGGER)
+    set_pev(g_ghost[index], pev_origin, origin)
+
+    // glow diferit per model
+    set_pev(g_ghost[index], pev_renderfx, kRenderFxGlowShell)
+    set_pev(g_ghost[index], pev_rendermode, kRenderTransAdd)
+    set_pev(g_ghost[index], pev_renderamt, 255.0)
+
+    new Float:colors[3]
+
+    switch(modelIndex)
+    {
+        case 0: colors = Float:{255.0, 50.0, 50.0}   // roșu
+        case 1: colors = Float:{50.0, 255.0, 50.0}   // verde
+        case 2: colors = Float:{150.0, 50.0, 255.0}  // mov
+    }
+
+    set_pev(g_ghost[index], pev_rendercolor, colors)
+}
+
+public RemoveAllGhosts()
+{
+    for (new i = 0; i < GHOST_COUNT; i++)
+    {
+        if (pev_valid(g_ghost[i]))
+            engfunc(EngFunc_RemoveEntity, g_ghost[i])
+
+        g_ghost[i] = 0
+    }
+}
+
+public GhostThink()
+{
+    if (!isNight) return
+
+    for (new i = 0; i < GHOST_COUNT; i++)
+    {
+        if (!pev_valid(g_ghost[i])) continue
+
+        new target = FindClosestPlayer(g_ghost[i], g_targetRadius)
+        if (target) FollowAndAttack(i, target)
+    }
+}
+
+FindClosestPlayer(ent, Float:radius)
+{
+    new players[32], num
+    get_players(players, num, "a")
+
+    new best = 0
+    new Float:bestDist = 99999.0
+    new Float:eOrigin[3]; pev(ent, pev_origin, eOrigin)
+
+    for (new i = 0; i < num; i++)
+    {
+        new id = players[i]
+
+        new Float:pOrigin[3]; pev(id, pev_origin, pOrigin)
+        new Float:dist = get_distance_f(eOrigin, pOrigin)
+
+        if (dist < radius && dist < bestDist)
+        {
+            bestDist = dist
+            best = id
+        }
+    }
+    return best
+}
+
+FollowAndAttack(ghostIndex, player)
+{
+    new ghost = g_ghost[ghostIndex]
+
+    new Float:gOrigin[3]; pev(ghost, pev_origin, gOrigin)
+    new Float:pOrigin[3]; pev(player, pev_origin, pOrigin)
+
+    new Float:velocity[3]
+    velocity[0] = pOrigin[0] - gOrigin[0]
+    velocity[1] = pOrigin[1] - gOrigin[1]
+    velocity[2] = pOrigin[2] - gOrigin[2]
+
+    new Float:len = floatsqroot(velocity[0]*velocity[0] + velocity[1]*velocity[1] + velocity[2]*velocity[2])
+    if (len == 0.0) return
+
+    velocity[0] = velocity[0] / len * g_ghostSpeed
+    velocity[1] = velocity[1] / len * g_ghostSpeed
+    velocity[2] = velocity[2] / len * g_ghostSpeed
+
+    set_pev(ghost, pev_velocity, velocity)
+
+    if (len < g_attackDistance)
+    {
+        emit_sound(ghost, CHAN_AUTO, GHOST_SOUND, 1.0, ATTN_NORM, 0, PITCH_NORM)
+        ExecuteHamB(Ham_TakeDamage, player, ghost, ghost, g_attackDamage, DMG_SHOCK)
+
+        CreateLightning(gOrigin, pOrigin)
+    }
+}
+
+CreateLightning(Float:start[3], Float:end[3])
+{
+    message_begin(MSG_BROADCAST, SVC_TEMPENTITY)
+    write_byte(TE_BEAMPOINTS)
+    write_coord_f(start[0])
+    write_coord_f(start[1])
+    write_coord_f(start[2])
+    write_coord_f(end[0])
+    write_coord_f(end[1])
+    write_coord_f(end[2])
+    write_short(precache_model("sprites/lgtning.spr"))
+    write_byte(0)
+    write_byte(20)
+    write_byte(5)
+    write_byte(20)
+    write_byte(25)
+    write_byte(150)
+    write_byte(50)
+    write_byte(255)
+    write_byte(200)
+    message_end()
+}
+
+// mesaje colorate
+ColorChat(id, const msg[], any:...)
+{
+    static buffer[192]
+    vformat(buffer, charsmax(buffer), msg, 3)
+
+    if (id)
+    {
+        client_print(id, print_chat, "%s", buffer)
+    }
+    else
+    {
+        for (new i = 1; i <= get_maxplayers(); i++)
+        {
+            if (is_user_connected(i))
+                client_print(i, print_chat, "%s", buffer)
+        }
+    }
+}
