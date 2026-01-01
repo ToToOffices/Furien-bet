@@ -1,6 +1,7 @@
-Modul este Co-Op. Vei lupta cot la cot alaturi de alti playeri versus monstrii care sunt boti.
+Modul este Co-Op.
+Ve-ti lupta cot la cot alaturi de alti playeri contra monstri-lor ( care sunt boti ).
 
-Despre monstrii
+Detalii despre monstrii:
 Modul contine 7 runde [sau seri] cu monstrii ce detin abilitati si statistici diferite.
 Predator: 500HP, 2000 AP, 230 Viteza, 800 Gravitatie, 110 Reinvieri, 3 Gold, 5 Exp, Daune normale.
 Roboti: 1000HP, 4000 AP, 240 Viteza, 780 Gravitatie, 130 Reinvieri, 6 Gold, 6 Exp, Daune scazute cu 10%
@@ -10,7 +11,7 @@ Zombie: 2500HP, 16500 AP, 260 Viteza, 640 Gravitatie, 190 Reinvieri, 14 Gold, 9 
 Death: 3000HP, 20000 AP, 270 Viteza, 560 Gravitatie, 210 Reinvieri, 15 Gold, 10 Exp, Daune scazute cu 30%
 Devil: 5000HP, 40000 AP, 290 Viteza, 400 Gravitatie, 260 Reinvieri, 20 Gold, 15 Exp, Daune scazute cu 50%
 
-Supplies
+Supplies:
 Frost Nade - 100G
 50 Health - 50G
 50 Armor - 25G
@@ -18,7 +19,7 @@ Frost Nade - 100G
 +25 Defence 200G * * nivelul defensivei pe care o aveti, acesta se multiplica Defender 500G
 
 
-Attack Items
+Attack Items:
 Ultra Bullets [ Sansa la lovitura critica ] - 4000G
 Fire Bullets [ Da foc victimei ] - 2222G
 Bomber [ 200x grenade ] - 5000G
@@ -26,7 +27,7 @@ Lasermine [ Poti planta lasere ] - 5000G
 Faster Bullets [ Sansa la atacuri rapide ] - 6000G
 Sniper [ Fara recul ] - 2000G
 
-Defense Items
+Defense Items:
 Boost HP [ +100 Health ] - 1000G
 Explorer Nade [ Teleport Nade ] - 2000G    
 Better Jump [ BunnyHop ] - 3000G
@@ -57,25 +58,25 @@ Horse Man - 15 Ore
 Aligator - 6 Ore
 Balls [ Skin sezon 1] - 5000 Powder
 
-Beneficii - Meniu accesibil dupa 5 ore de joc
-Tag in chat personalizat
-Mesaj intrare personalizat
-Mesaj iesire personalizat
-Mesaj personalizat la cel mai mare killstreak
-Schimbare efect grenada in cazul in care detineti Bomber
-Setare melodie de intrare personalizata
+Beneficii - Meniu accesibil după 1h de joc
+Tag in chat personalizat.
+Mesaj intrare personalizat.
+Mesaj iesire personalizat.
+Mesaj personalizat la cel mai mare killstreak.
+Schimbare efect grenada in cazul in care detineti Bomber.
+x Setare melodie de intrare personalizata. ( Dezactivata )
 
 Misiuni
-Obtine toate itemele de atac
-Obtine toate itemele defensive
-Obtine toate itemele VIP
-Obtine atacul maxim din supplies
-Obtine defensiva maxima din supplies
-Ucide 15000 monstrii cu headshot
-Ucide 1500 monstrii cu lama
-Joaca 5 ore pe server
-Consuma 50000 Gold
-Obtine VIP
+Obtine toate itemele de atac.
+Obtine toate itemele defensive.
+Obtine toate itemele VIP.
+Obtine atacul maxim din supplies.
+Obtine defensiva maxima din supplies.
+Ucide 15000 monstrii cu headshot.
+Ucide 1500 monstrii cu lama.
+Joaca 5 ore pe server.
+Consuma 50000 Gold.
+Obtine VIP.
 
 Puncte status - primesti 3 puncte la fiecare nivel nou
 HP +10 - 10 ori
@@ -87,17 +88,17 @@ Regen +1 HP [doar daca ai best pie] - 5 ori
 Axe Damage +50 [doar daca ai axe knife din VIP] - 10 ori
 Lasermine Damage +25 [Doar daca ai lasermine]- 5 ori
 
-Best of nights
+Best of nights:
 Cele mai multe ucideri facute intr-o noapte
 Cele mai multe daune provocate intr-o noapte
 Consumat cel mai mult Gold intr-o noapte
 
 Aceste date se salveaza si le puteti afisa pe chat
 
-Extra
+Extra:
 Sanse 5% de a dropa cufar cu Powder la monstrii.
 La fiecare 30 de secunde apare un cufar cu premii.
 Singurele metode de a obtine powder in joc sunt prin cufere.
 La uciderea sefului la fiecare noapte primiti recompensa generoasa in experienta si gold.
 
-O parte din mod. Sunt multe de aratat, dar ve-ti doscoperi jucand pe server 😎
+Acestea fiind o parte din mod. Sunt multe de aratat, dar ve-ti doscoperi jucand pe server.
