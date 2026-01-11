@@ -1,0 +1,79 @@
+#include <amxmodx>
+#include <amxmisc>
+
+#define PLUGIN "Arata Preturi"
+#define VERSION "1.0"
+#define AUTHOR "AI"
+
+public plugin_init()
+{
+	register_plugin(PLUGIN, VERSION, AUTHOR)
+	
+	// Comenzi pentru chat
+	register_clcmd("say /preturi", "ShowPrices")
+	register_clcmd("say_team /preturi", "ShowPrices")
+	register_clcmd("say /prices", "ShowPrices")
+	register_clcmd("say_team /prices", "ShowPrices")
+	
+	// Comanda in consola
+	register_clcmd("preturi", "ShowPrices")
+}
+
+public ShowPrices(id)
+{
+	// HTML-ul pentru fereastra MOTD
+	// Poti edita preturile si gradele direct aici
+	static const szMotd[] = "<html>\
+	<head>\
+	<style>\
+	body { background-color: #1a1a1a; font-family: Verdana, sans-serif; color: #f2f2f2; }\
+	h2 { text-align: center; color: #ffcc00; text-shadow: 2px 2px #000; }\
+	table { width: 90%; margin: 20px auto; border-collapse: collapse; background-color: #262626; }\
+	th { background-color: #333; color: #ffcc00; padding: 12px; border: 1px solid #444; }\
+	td { padding: 10px; border: 1px solid #444; text-align: center; }\
+	tr:hover { background-color: #333333; }\
+	.price { color: #00ff00; font-weight: bold; }\
+	.contact { text-align: center; margin-top: 30px; font-size: 14px; color: #aaa; }\
+	</style>\
+	</head>\
+	<body>\
+	<h2>Lista Preturi / Prices List</h2>\
+	<table>\
+	<tr>\
+		<th>Grad (Rank)</th>\
+		<th>Pret (Price)</th>\
+		<th>Durata (Duration)</th>\
+	</tr>\
+	<tr>\
+		<td>V.I.P</td>\
+		<td class='price'>5 &euro;</td>\
+		<td>1 Luna (Month)</td>\
+	</tr>\
+	<tr>\
+		<td>Admin</td>\
+		<td class='price'>10 &euro;</td>\
+		<td>Permanent</td>\
+	</tr>\
+	<tr>\
+		<td>Manager</td>\
+		<td class='price'>15 &euro;</td>\
+		<td>Permanent</td>\
+	</tr>\
+	<tr>\
+		<td>Owner</td>\
+		<td class='price'>25 &euro;</td>\
+		<td>Permanent</td>\
+	</tr>\
+	</table>\
+	<div class='contact'>\
+		<p>Pentru donatii / cumparare grade, contactati Fondatorul.</p>\
+		<p>Acceptam: PayPal, Paysafecard, Transfer Bancar.</p>\
+	</div>\
+	</body>\
+	</html>";
+	
+	// Afiseaza fereastra
+	show_motd(id, szMotd, "Lista Preturi")
+	
+	return PLUGIN_HANDLED
+}
