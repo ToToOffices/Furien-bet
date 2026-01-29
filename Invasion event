@@ -1,0 +1,266 @@
+#include <amxmodx>
+#include <fakemeta>
+#include <hamsandwich>
+#include <engine>
+#include <cstrike>
+#include <fun>
+
+#define PLUGIN  "Furien Invasion Event"
+#define VERSION "3.1"
+#define AUTHOR  "ChatGPT"
+
+new bool:g_Invasion
+new g_Boss
+new g_OldTeam[33]
+
+/* ===================== INIT ===================== */
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+
+    register_logevent("RoundStart", 2, "1=Round_Start")
+    RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage")
+    RegisterHam(Ham_Killed, "player", "fw_PlayerKilled")
+
+    set_task(180.0, "check_invasion", _, _, _, "b")
+}
+
+public RoundStart()
+{
+    g_Invasion = false
+}
+
+/* ===================== INVASION ===================== */
+
+public check_invasion()
+{
+    if(g_Invasion) return
+
+    if(random_num(1,100) <= 30)
+        start_invasion()
+}
+
+public start_invasion()
+{
+    g_Invasion = true
+
+    client_print(0, print_chat, "[INVASION] Ministrul si ELITE-urile au invadat harta!")
+    set_hudmessage(255, 0, 0, -1.0, 0.25, 0, 6.0, 6.0)
+    show_hudmessage(0, "INVASION EVENT\nELITE MONSTERS ACTIVE!")
+
+    move_players_to_ct()
+
+    spawn_mobs(6)          // mobs normali
+    spawn_elite_mobs(3)    // 2–3 ELITE (9999 HP)
+    spawn_boss()
+}
+
+/* ===================== TEAM SYSTEM ===================== */
+
+public move_players_to_ct()
+{
+    for(new i = 1; i <= 32; i++)
+    {
+        if(!is_user_alive(i)) continue
+
+        g_OldTeam[i] = cs_get_user_team(i)
+
+        cs_set_user_team(i, CS_TEAM_CT)
+        strip_user_weapons(i)
+
+        give_item(i, "weapon_m4a1")
+        give_item(i, "weapon_deagle")
+        give_item(i, "weapon_knife")
+
+        cs_set_user_bpammo(i, CSW_M4A1, 90)
+        cs_set_user_bpammo(i, CSW_DEAGLE, 35)
+    }
+}
+
+/* ===================== NORMAL MOBS ===================== */
+
+public spawn_mobs(count)
+{
+    for(new i = 0; i < count; i++)
+        create_mob("invasion_mob", 400.0, 350.0)
+}
+
+/* ===================== ELITE MOBS ===================== */
+
+public spawn_elite_mobs(count)
+{
+    for(new i = 0; i < count; i++)
+        create_mob("invasion_elite", 9999.0, 180.0)
+}
+
+/* ===================== MOB CREATOR ===================== */
+
+public create_mob(const classname[], Float:hp, Float:speed)
+{
+    new ent = create_entity("info_target")
+    if(!ent) return
+
+    entity_set_string(ent, EV_SZ_classname, classname)
+    entity_set_model(ent, "models/player/vip/vip.mdl")
+
+    entity_set_float(ent, EV_FL_health, hp)
+    entity_set_int(ent, EV_INT_movetype, MOVETYPE_STEP)
+    entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
+
+    new Float:origin[3]
+    origin[0] = random_float(-400.0, 400.0)
+    origin[1] = random_float(-400.0, 400.0)
+    origin[2] = 120.0
+    entity_set_origin(ent, origin)
+
+    set_pev(ent, pev_maxspeed, speed)
+    set_task(0.5, "mob_think", ent, _, _, "b")
+}
+
+/* ===================== MOB AI ===================== */
+
+public mob_think(ent)
+{
+    if(!is_valid_ent(ent)) return
+
+    new target = find_nearest_player(ent)
+    if(!target) return
+
+    new Float:e[3], Float:p[3]
+    entity_get_vector(ent, EV_VEC_origin, e)
+    entity_get_vector(target, EV_VEC_origin, p)
+
+    p[0] -= e[0]
+    p[1] -= e[1]
+    p[2] = 0.0
+
+    entity_set_vector(ent, EV_VEC_velocity, p)
+}
+
+/* ===================== BOSS ===================== */
+
+public spawn_boss()
+{
+    g_Boss = create_entity("info_target")
+    if(!g_Boss) return
+
+    entity_set_string(g_Boss, EV_SZ_classname, "invasion_boss")
+    entity_set_model(g_Boss, "models/player/gign/gign.mdl")
+
+    entity_set_float(g_Boss, EV_FL_health, 6000.0)
+    entity_set_int(g_Boss, EV_INT_solid, SOLID_BBOX)
+
+    new Float:origin[3] = {0.0, 0.0, 150.0}
+    entity_set_origin(g_Boss, origin)
+
+    set_task(10.0, "boss_skill", g_Boss, _, _, "b")
+}
+
+public boss_skill(ent)
+{
+    if(!is_valid_ent(ent)) return
+
+    client_print(0, print_center, "MINISTRUL foloseste DARK BLIND!")
+
+    for(new i = 1; i <= 32; i++)
+    {
+        if(is_user_alive(i))
+        {
+            message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, i)
+            write_short(1<<12)
+            write_short(1<<12)
+            write_short(0)
+            write_byte(0)
+            write_byte(0)
+            write_byte(0)
+            write_byte(200)
+            message_end()
+        }
+    }
+}
+
+/* ===================== DAMAGE ===================== */
+
+public fw_TakeDamage(victim, inflictor, attacker, Float:damage)
+{
+    if(!g_Invasion) return HAM_IGNORED
+
+    if(attacker >= 1 && attacker <= 32 && victim >= 1 && victim <= 32)
+        SetHamParamFloat(4, damage * 0.3)
+
+    return HAM_IGNORED
+}
+
+/* ===================== KILLS ===================== */
+
+public fw_PlayerKilled(victim, attacker)
+{
+    if(!g_Invasion) return HAM_IGNORED
+
+    if(attacker >= 1 && attacker <= 32)
+    {
+        new money = 800
+
+        if(is_valid_ent(victim))
+        {
+            static classname[32]
+            entity_get_string(victim, EV_SZ_classname, classname, 31)
+
+            if(equal(classname, "invasion_elite"))
+                money = 3000
+            else if(equal(classname, "invasion_boss"))
+                money = 5000
+        }
+
+        cs_set_user_money(attacker, cs_get_user_money(attacker) + money)
+        client_print(attacker, print_center, "+%d$ INVASION", money)
+    }
+
+    if(victim == g_Boss)
+    {
+        g_Invasion = false
+        restore_teams()
+        client_print(0, print_chat, "[INVASION] Ministrul a fost invins!")
+    }
+
+    return HAM_IGNORED
+}
+
+/* ===================== RESTORE ===================== */
+
+public restore_teams()
+{
+    for(new i = 1; i <= 32; i++)
+    {
+        if(is_user_connected(i))
+            cs_set_user_team(i, g_OldTeam[i])
+    }
+}
+
+/* ===================== UTILS ===================== */
+
+public find_nearest_player(ent)
+{
+    new Float:best = 99999.0
+    new bestPlayer = 0
+
+    new Float:e[3]
+    entity_get_vector(ent, EV_VEC_origin, e)
+
+    for(new i = 1; i <= 32; i++)
+    {
+        if(!is_user_alive(i)) continue
+
+        new Float:p[3]
+        entity_get_vector(i, EV_VEC_origin, p)
+
+        new Float:d = get_distance_f(e, p)
+        if(d < best)
+        {
+            best = d
+            bestPlayer = i
+        }
+    }
+    return bestPlayer
+}
