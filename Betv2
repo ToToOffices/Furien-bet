@@ -1,0 +1,271 @@
+#include <amxmodx>
+#include <cstrike>
+
+#define PLUGIN "BetMenu v2"
+#define VERSION "1.0"
+#define AUTHOR "ChatGPT"
+
+// =========================
+// ENUM + VARIABILE
+// =========================
+enum BET_TYPE {
+    BET_TEAM_CT,
+    BET_TEAM_T,
+    BET_PLAYER
+};
+
+new const TeamName[2][] = {"Counter-Terrorist", "Terorist"};
+new g_betType[33];
+new g_betTarget[33];   // player id sau 0 pentru echipa
+new g_betAmount[33];
+new g_hideMenu[33];
+new g_once[33];
+
+// =========================
+// INITIALIZARE PLUGIN
+// =========================
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    register_event("DeathMsg", "ev_PlayerDeath", "a");
+    register_clcmd("say /bet", "cmd_bet");
+}
+
+// =========================
+// CLIENT DISCONNECT
+// =========================
+public client_disconnect(id)
+{
+    reset_player(id);
+}
+
+// =========================
+// RESET PLAYER
+// =========================
+stock reset_player(id)
+{
+    g_once[id] = false;
+    g_hideMenu[id] = false;
+    g_betType[id] = -1;
+    g_betTarget[id] = 0;
+    g_betAmount[id] = 0;
+}
+
+// =========================
+// MOARTE JUCATOR
+// =========================
+public ev_PlayerDeath()
+{
+    new id = read_data(2);
+    if (!is_user_connected(id)) return;
+    if (g_hideMenu[id] || g_once[id]) return;
+    if (players_still_alive() < 2) return;
+
+    set_task(1.0, "bet_menu", id);
+}
+
+// =========================
+// /BET MANUAL
+// =========================
+public cmd_bet(id)
+{
+    if (is_user_alive(id)) {
+        client_print(id, print_chat, "[BetMenu] Nu poti paria cand esti in viata.");
+        return PLUGIN_HANDLED;
+    }
+    if (g_once[id]) {
+        client_print(id, print_chat, "[BetMenu] Ai pariat deja in runda aceasta.");
+        return PLUGIN_HANDLED;
+    }
+    bet_menu(id);
+    return PLUGIN_HANDLED;
+}
+
+// =========================
+// AFISARE MENIU
+// =========================
+public bet_menu(id)
+{
+    if (!is_user_connected(id)) return;
+    if (players_still_alive() < 2) return;
+
+    g_once[id] = true;
+
+    new text[128];
+    formatex(text, charsmax(text), "\rBet Menu");
+
+    new menu = menu_create(text, "bet_handler");
+    // Pariu echipa
+    menu_additem(menu, "Pariaza pe CT", "0");
+    menu_additem(menu, "Pariaza pe T", "1");
+    // Pariu pe player
+    menu_additem(menu, "Pariaza pe un player", "2");
+    // Nu mai afișa
+    menu_additem(menu, "Nu mai afisa meniul automat", "3");
+
+    menu_setprop(menu, MPROP_EXITNAME, "Inchide");
+    menu_display(id, menu);
+}
+
+// =========================
+// HANDLER MENIU
+// =========================
+public bet_handler(id, menu, item)
+{
+    if (item == MENU_EXIT) {
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    new data[6], name[64], access, callback;
+    menu_item_getinfo(menu, item, access, data, 6, name, charsmax(name), callback);
+    new key = str_to_num(data);
+
+    menu_destroy(menu);
+
+    if (key == 3) {
+        g_hideMenu[id] = true;
+        client_print(id, print_chat, "[BetMenu] Meniul nu va mai aparea automat.");
+        return PLUGIN_HANDLED;
+    }
+
+    if (key == 0 || key == 1) {
+        g_betType[id] = key; // echipa
+        g_betTarget[id] = 0;
+    }
+
+    if (key == 2) {
+        g_betType[id] = BET_PLAYER;
+        show_player_select(id);
+        return PLUGIN_HANDLED;
+    }
+
+    ask_bet_amount(id);
+}
+
+// =========================
+// SELECT PLAYER
+// =========================
+stock show_player_select(id)
+{
+    new text[128];
+    formatex(text, charsmax(text), "Selecteaza un jucator:");
+
+    new menu = menu_create(text, "player_select_handler");
+    new players[32], num;
+    get_players(players, num, "a");
+
+    for (new i=0;i<num;i++)
+    {
+        if (players[i]==id) continue; // skip dead
+        new pname[32];
+        get_user_name(players[i], pname, charsmax(pname));
+        menu_additem(menu, pname, players[i]);
+    }
+
+    menu_setprop(menu, MPROP_EXITNAME, "Inchide");
+    menu_display(id, menu);
+}
+
+// =========================
+// HANDLER SELECT PLAYER
+// =========================
+public player_select_handler(id, menu, item)
+{
+    if (item == MENU_EXIT) { menu_destroy(menu); return PLUGIN_HANDLED; }
+
+    new players[32], num;
+    get_players(players, num, "a");
+    g_betTarget[id] = players[item];
+
+    menu_destroy(menu);
+    ask_bet_amount(id);
+}
+
+// =========================
+// INTRODUCERE SUMA
+// =========================
+stock ask_bet_amount(id)
+{
+    client_print(id, print_chat, "[BetMenu] Scrie suma pe care vrei sa o pariezi (ex: 500):");
+    set_task(0.1, "wait_for_amount", id);
+}
+
+// =========================
+// AȘTEAPTĂ SUMA
+// =========================
+public wait_for_amount(id)
+{
+    if (!is_user_connected(id)) return;
+
+    new input[16];
+    if (!get_user_input(id, input, charsmax(input))) {
+        set_task(0.5, "wait_for_amount", id); return;
+    }
+
+    new amount = str_to_num(input);
+    if (amount <= 0 || amount > cs_get_user_money(id)) {
+        client_print(id, print_chat, "[BetMenu] Suma invalida.");
+        set_task(0.5, "wait_for_amount", id); return;
+    }
+
+    g_betAmount[id] = amount;
+    cs_set_user_money(id, cs_get_user_money(id) - amount);
+
+    if (g_betType[id] == BET_PLAYER)
+        new pname[32]; get_user_name(g_betTarget[id], pname, charsmax(pname));
+    else
+        strcopy(pname, charsmax(pname), TeamName[g_betType[id]]);
+
+    ShowHud(id, "Ai pariat %d$ pe %s", g_betAmount[id], pname);
+}
+
+// =========================
+// REWARD LA FINAL
+// =========================
+public reward_players(winner_team)
+{
+    new players[32], num;
+    get_players(players, num, "a");
+
+    for (new i=0;i<num;i++)
+    {
+        new id = players[i];
+        if (g_betAmount[id]<=0) continue;
+
+        if (g_betType[id]==BET_PLAYER) {
+            if (g_betTarget[id] != 0 && !is_user_alive(g_betTarget[id])) {
+                cs_set_user_money(id, cs_get_user_money(id) + g_betAmount[id]*2);
+                ShowHud(id, "Ai castigat %d$!", g_betAmount[id]*2);
+            }
+        } else if (g_betType[id]==winner_team) {
+            cs_set_user_money(id, cs_get_user_money(id) + g_betAmount[id]*2);
+            ShowHud(id, "Ai castigat %d$!", g_betAmount[id]*2);
+        }
+    }
+
+    // reset
+    for (new i=0;i<num;i++) reset_player(players[i]);
+}
+
+// =========================
+// JUCATORI IN VIATA
+// =========================
+stock players_still_alive()
+{
+    new players[32], num, alive=0;
+    get_players(players, num, "a");
+    for (new i=0;i<num;i++) if (is_user_alive(players[i])) alive++;
+    return alive;
+}
+
+// =========================
+// HUD
+// =========================
+stock ShowHud(id, const fmt[], any:...)
+{
+    new message[128];
+    vformat(message, charsmax(message), fmt, 3);
+    set_hudmessage(0,255,0,-1.0,0.25,0,6.0,6.0);
+    show_hudmessage(id,message);
+}
