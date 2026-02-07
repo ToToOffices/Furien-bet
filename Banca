@@ -1,0 +1,582 @@
+#include <amxmodx>
+#include <amxmisc>
+#include <cstrike>
+#include <nvault>
+#include <fun>
+
+new const
+	PLUGIN[] = "Banca",
+	VERSION[] = "3.1",
+	AUTHOR[] = "scosmyn";
+
+new iMoney[33],count[33],Status[33][32],ii_count[33],File[64],szPassword[33][32],iCard[33] = 0,bCount[33] = 0
+new pcvar_RoundEnd,pcvar_bomb_explode,pcvar_bomb_defused,pcvar_bomb_planted,pcvar_money_player
+new g_vault,sync
+
+new const szCharacters[][] =
+{
+	"!","@","#",
+	"$","%",^"^",
+	"&","*","(",
+	")","-","_",
+	"=","+","[",
+	"{","]","}",
+	"\","|",";",
+	":","'",",",
+	"<",".",">",
+	"/","?","~",
+	"`","^""
+}
+
+public plugin_init() {
+	register_plugin(PLUGIN,VERSION,AUTHOR)
+
+	register_clcmd("say","hook_say")
+	register_clcmd("say_team","hook_say")
+	register_clcmd("amx_retrage","cmdRetrage")
+	register_clcmd("amx_depune","cmdDepune")
+	register_clcmd("amx_transfer","cmdTransfer")
+	register_clcmd("amx_give_money","cmdMoney")
+	register_clcmd("amx_take_money","cmdTakeMoney")
+	register_clcmd("amx_money","cmdMoneyPlayer")
+	register_clcmd("amx_card","cmdCard")
+
+	register_event("TextMsg","bomb_explode","a","2&#Target_B")
+	register_event("TextMsg","bomb_planted","a","2&%!MRAD_BOMBPL")
+	register_event("TextMsg","bomb_defused","a","2&%!MRAD_BOMBDEF")
+	register_logevent("round_end",2,"1=Round_End")
+
+	pcvar_RoundEnd = register_cvar("cvar_round_end","6000")
+	pcvar_bomb_explode = register_cvar("cvar_bomb_explode","1000")
+	pcvar_bomb_defused = register_cvar("cvar_bomb_defused","1000")
+	pcvar_bomb_planted = register_cvar("cvar_bomb_planted","500")
+	pcvar_money_player = register_cvar("cvar_player_money","50000")
+
+	sync = CreateHudSyncObj()
+	g_vault = nvault_open("BCR")
+	if(g_vault == INVALID_HANDLE)
+		set_fail_state("Eroare la deschiderea bazei de date din vAult.")
+
+	get_configsdir(File,charsmax(File))
+	formatex(File,charsmax(File),"%s/bank_system_info.txt",File)
+	if(!file_exists(File))
+		write_file(File,"Nick	|	IP	|	Parola")
+}
+public plugin_native() {
+	register_native("get_user_money","get_money")
+	register_native("set_user_money","set_money")
+}
+public get_money(iPlugin,iParams) {
+	new id = get_param(1)
+	return iMoney[id]
+}
+public set_money(iPlugin,iParams) {
+	new id = get_param(1)
+	iMoney[id] = max(0,get_param(2))
+	return iMoney[id]
+}
+
+public hook_say(id) {
+	new szArgs[192],ip[32],pass[120]
+	read_args(szArgs,charsmax(szArgs))
+	remove_quotes(szArgs)
+
+	if(iCard[id] && !bCount[id])
+	{
+		if(equal(szArgs,""))
+		{
+			client_cmd(id,"messagemode")
+			color(id,"!team[CARD]!yAdauga parola pentru a putea juca de pe acest cont!")
+			return 1
+		}
+		if(equal(szArgs,szPassword[id]))
+		{
+			color(id,"!team[CARD]!yAi fost logat cu succes.")
+			Status[id] = "Logat"
+			iCard[id] = 1
+			bCount[id] = 1
+			return 1
+		}
+		else
+		{
+			server_cmd("kick #%i ^"Parola gresita^"",get_user_userid(id))
+			return 1
+		}
+	}
+	if(iCard[id] && ii_count[id] == 1)
+	{
+		if(strlen(szArgs) > 32 || strlen(szArgs) < 5 || equal(szArgs,""))
+		{
+			color(id,"!team[Banca]!yParola trebuie sa aiba minim 5 caractere si maxim 32!")
+			client_cmd(id,"messagemode")
+			return 1
+		}
+		for(new i = 0; i < sizeof szCharacters; i++)
+		{
+			if(contain(szArgs,szCharacters) != -1)
+			{
+				color(id,"!team[CARD]!yParola trebuie sa fie formata doar din numere sau litere!")
+				client_cmd(id,"messagemode")
+				return 1
+			}
+		}
+		get_user_ip(id,ip,charsmax(ip),1)
+		copy(szPassword[id],charsmax(szPassword[]),szArgs)
+		Status[id] = "Logat"
+		ii_count[id] = 2
+		SaveData(id)
+		color(id,"!team[CARD]!yFelicitari,tocmai ti-ai schimbat parola in: !g%s",szArgs)
+		formatex(pass,charsmax(pass),"PAROLA SCHIMBATA:^nNick: %s  |  IP: %s  |  Parola: %s",name(id),ip,szArgs)
+		write_file(File,pass)
+		return 1
+	}
+	if(equal(szArgs,"/changepassword") && iCard[id])
+	{
+		if(ii_count[id] == 2)
+		{
+			color(id,"!team[CARD]!yPentru a schimba din nou parola v-a trebui sa dai retry,parola ta: !g[ !team%s !g]",szPassword[id])
+			return 1
+		}
+		color(id,"!team[CARD]!yAdauga noua parola!")
+		client_cmd(id,"messagemode")
+		ii_count[id] = 1
+		return 1
+	}
+	if(equal(szArgs,"/retrage",strlen("/retrage")))
+	{
+		replace_all(szArgs,charsmax(szArgs),"/","")
+		client_cmd(id,"amx_%s",szArgs)
+	}
+	else if(equal(szArgs,"/depune",strlen("/depune")))
+	{
+		replace_all(szArgs,charsmax(szArgs),"/","")
+		client_cmd(id,"amx_%s",szArgs)
+	}
+	else if(equal(szArgs,"/transfer",strlen("/transfer")))
+	{
+		replace_all(szArgs,charsmax(szArgs),"/","")
+		client_cmd(id,"amx_%s",szArgs)
+	}
+	else if(equal(szArgs,"/money",strlen("/money")))
+	{
+		replace_all(szArgs,charsmax(szArgs),"/","")
+		client_cmd(id,"amx_%s",szArgs)
+	}
+	else if(equal(szArgs,"/card",strlen("/card")) && !iCard[id])
+	{
+		replace_all(szArgs,charsmax(szArgs),"/","")
+		client_cmd(id,"amx_%s",szArgs)
+	}
+	return 0
+}
+public cmdCard(id) {
+	new szArgs[32],pass[120],ip[32]
+	read_argv(1,szArgs,charsmax(szArgs))
+
+	if(strlen(szArgs) > 32 || strlen(szArgs) < 5 || equal(szArgs,""))
+	{
+		color(id,"!team[Banca]!y/card <parola>")
+		color(id,"!team[Banca]!yParola trebuie sa aiba minim 5 caractere si maxim 32!")
+		return 1
+	}
+	for(new i = 0; i < sizeof szCharacters; i++)
+	{
+		if(contain(szArgs,szCharacters) != -1)
+		{
+			color(id,"!team[CARD]!yParola trebuie sa fie formata doar din numere sau litere!")
+			return 1
+		}
+	}
+	get_user_ip(id,ip,charsmax(ip),1)
+	copy(szPassword[id],charsmax(szPassword[]),szArgs)
+	color(id,"!team[CARD]!yFelicitari,ti-ai facut cont la banca,parola: !g%s",szArgs)
+	Status[id] = "Logat"
+	iCard[id] = 1
+	bCount[id] = 1
+	SaveData(id)
+	formatex(pass,charsmax(pass),"Nick: %s  |  IP: %s  |  Parola: %s",name(id),ip,szArgs)
+	write_file(File,pass)
+	return 1
+}
+public cmdRetrage(id) {
+	new szArgs[10]
+	read_argv(1,szArgs,charsmax(szArgs))
+	new arg = str_to_num(szArgs)
+	new money = cs_get_user_money(id)
+
+	if(equal(szArgs,"") || !arg)
+	{
+		color(id,"!team[Banca]!y/retrage <suma>.")
+		return 1
+	}
+	if(arg > iMoney[id])
+	{
+		color(id,"!team[Banca]!ySuma pe care vrei sa o retragi este prea mare fata de ce ai tu in banca.")
+		return 1
+	}
+	if(money == 16000)
+	{
+		color(id,"!team[Banca]!yAi deja 16000$.")
+		return 1
+	}
+	if(money + arg > 16000)
+	{
+		new i = 16000 - money
+		color(id,"!team[Banca]!yAm retras doar !g%i !ydeoarece depasesti 16000$.",i)
+		cs_set_user_money(id,16000,1)
+		iMoney[id]-= i
+		return 1
+	}
+	cs_set_user_money(id,money + arg)
+	iMoney[id]-= arg
+	color(id,"!team[Banca]!yTocmai ai retras !g%i $ !ymai ai la banca !g%i$.",arg,iMoney[id])
+	SaveData(id)
+	return 0
+}
+public cmdDepune(id) {
+	new szArgs[10]
+	read_argv(1,szArgs,charsmax(szArgs))
+	new ammount = str_to_num(szArgs)
+	new money = cs_get_user_money(id)
+
+	if(equal(szArgs,"") || !ammount)
+	{
+		color(id,"!team[Banca]!y/depune <suma>")
+		return 1
+	}
+	if(money < ammount)
+	{
+		color(id,"!team[Banca]!ySuma pe care vrei sa o depui este prea mare decat ce ai tu in momentul de fata.")
+		return 1
+	}
+	cs_set_user_money(id,money - ammount)
+	iMoney[id]+= ammount
+	color(id,"!team[Banca]!yTocmai ai depus !g%i $ !yacum ai la banca!g%i$.",ammount,iMoney[id])
+	SaveData(id)
+	return 0
+}
+public cmdMoney(id) {
+	if(!(get_user_flags(id) & ADMIN_IMMUNITY))
+		return 1
+	
+	new szArgs[35],szArgs2[10],name_e[32]
+	read_argv(1,szArgs,charsmax(szArgs))
+	read_argv(2,szArgs2,charsmax(szArgs2))
+	new ammount = str_to_num(szArgs2)
+	new target = cmd_target(id,szArgs,8)
+	
+	if(equal(szArgs,"") || equal(szArgs2,"") || !ammount)
+	{
+		console_print(id,"amx_give_money <nume> <cantitate>")
+		return 1
+	}
+
+	if(!target)
+	{
+		console_print(id,"Jucator-ul %s nu exista.",szArgs)
+		return 1
+	}
+	get_user_name(target,name_e,charsmax(name_e))
+	
+	iMoney[target]+= ammount
+	color(target,"!team[Banca]!yAdmin-ul: %s ti-a dat %i $.",name(id),ammount)
+	color(id,"!team[Banca]!yI-ai oferit cu succes player-ului %s %i $.",name_e,ammount)
+	return 1
+}
+public cmdTakeMoney(id) {
+	if(!(get_user_flags(id) & ADMIN_IMMUNITY))
+		return 1
+	
+	new szArgs[32],szArgs2[10],player[32],target,ammount
+	read_argv(1,szArgs,charsmax(szArgs))
+	read_argv(2,szArgs2,charsmax(szArgs2))
+
+	ammount = str_to_num(szArgs2)
+	target = cmd_target(id,szArgs,8)
+
+	if(equal(szArgs,"") || equal(szArgs2,"") || !ammount)
+	{
+		console_print(id,"amx_take_money <nume> <cantitate>.")
+		return 1
+	}
+	if(!target)
+	{
+		console_print(id,"Jucator-ul %s nu exista.",szArgs)
+		return 1
+	}
+	if(iMoney[target] < ammount)
+	{
+		console_print(id,"Suma pe care vrei sa i-o scazi este prea mare fata de ce are el in banca.")
+		return 1
+	}
+	get_user_name(target,player,charsmax(player))
+	console_print(id,"I-ai scazut %i$ din banca player-ului %s.",ammount,player)
+	color(target,"!team[Banca]!yAdmin-ul: !g%s !yti-a scazut suma de !g%i !ydin banca.",name(id),ammount)
+	iMoney[target]-=ammount
+	return 1
+}	
+public cmdTransfer(id) {
+	new szArgs[35],szArgs2[10],ammount,target,name_e[32]
+	read_argv(1,szArgs,charsmax(szArgs))
+	read_argv(2,szArgs2,charsmax(szArgs2))
+
+	ammount = str_to_num(szArgs2)
+	target = cmd_target(id,szArgs,8)
+	
+	if(id == target)
+	{
+		color(id,"!team[Banca]!yNu-ti poti transfera singur bani.")
+		return 1
+	}
+	if(equal(szArgs,"") || equal(szArgs2,"") || !ammount)
+	{
+		color(id,"!team[Banca]!y/transfer <nume> <cantitate>")
+		return 1
+	}
+	if(!target)
+	{
+		color(id,"!team[Banca]!yAcest jucator nu exista.")
+		return 1
+	}
+	if(ammount > iMoney[id])
+	{
+		color(id,"!team[Banca]!ySuma pe care vrei sa i-o dai este prea mare fata de ce ai tu in banca.")
+		return 1
+	}
+	get_user_name(target,name_e,charsmax(name_e))
+
+	iMoney[target]+= ammount
+	iMoney[id]-= ammount
+
+	color(target,"!team[Banca] !g%s !yti-a transferat !g%i$ !yin cont.",name(id),ammount)
+	color(id,"!team[Banca]!yI-ai transferat cu succes player-ului !g%s !ysuma de !g%i$.",name_e,ammount)
+	return 1
+}
+public cmdMoneyPlayer(id) {
+	new szArgs[32],name_e[32],target
+	read_argv(1,szArgs,charsmax(szArgs))
+	target = cmd_target(id,szArgs,8)
+	
+	if(!target)
+	{
+		color(id,"!team[Banca]!yJucator-ul !g%s !ynu exista.",szArgs)
+		return 1
+	}
+	if(target == id || equal(szArgs,""))
+	{
+		color(id,"!team[Banca]!yIn acest moment ai in banca !g%i$.",iMoney[id])
+		return 1
+	}
+	get_user_name(target,name_e,charsmax(name_e))
+	color(id,"!team[Banca]!g%s !yare !g%i$ !yin banca.",name_e,iMoney[target])
+	return 1
+}
+public round_end() {
+	new iPlayers[32],iNum,id,i
+	get_players(iPlayers,iNum,"ch")
+	for(i = 0; i < iNum; i++)
+	{
+		id = iPlayers
+		set_task(0.2,"task_exec",id)
+	}
+}
+public bomb_explode() {
+	new iPlayers[32],iNum,id,i
+	get_players(iPlayers,iNum,"ceh","TERRORIST")
+	for(i = 0; i < iNum; i++)
+	{
+		id = iPlayers
+		iMoney[id]+= get_pcvar_num(pcvar_bomb_explode)
+		color(id,"!team[Banca]!yA-ti primit !g%i$ !ypentru explodarea bombei.",get_pcvar_num(pcvar_bomb_explode))
+		SaveData(id)
+	}
+	return 1
+}
+public bomb_defused() {
+	new iPlayers[32],iNum,id,i
+	get_players(iPlayers,iNum,"ceh","CT")
+	for(i = 0; i < iNum; i++)
+	{
+		id = iPlayers
+		iMoney[id]+= get_pcvar_num(pcvar_bomb_defused)
+		color(id,"!team[Banca]!yA-ti primit !g%i$ !ypentru ca ati dezamorsat bomba.",get_pcvar_num(pcvar_bomb_defused))
+		SaveData(id)
+	}
+	return 1
+}
+public bomb_planted() {
+	new iPlayers[32],iNum,id,i
+	get_players(iPlayers,iNum,"ceh","TERRORIST")
+	for(i = 0; i < iNum; i++)
+	{
+		id = iPlayers
+		iMoney[id]+= get_pcvar_num(pcvar_bomb_planted)
+		color(id,"!team[Banca]!yA-ti primit !g%i$ !ypentru ca ati plantat bomba.",get_pcvar_num(pcvar_bomb_planted))
+		SaveData(id)
+	}
+	return 1
+}
+public task_exec(id) {
+	if(!is_user_connected(id))
+		return
+
+	new money = cs_get_user_money(id)
+	if(money >= 16000)
+	{
+		iMoney[id]+= get_pcvar_num(pcvar_RoundEnd)
+		cs_set_user_money(id,money - get_pcvar_num(pcvar_RoundEnd))
+		color(id,"!team[Banca]!yTocmai ti-au fost depusi !g%i $ !teamla banca.",get_pcvar_num(pcvar_RoundEnd))
+		SaveData(id)
+	}
+}
+public client_putinserver(id) {
+	if(!is_user_bot(id) || !is_user_hltv(id))
+	{
+		count[id] = 0
+		iCard[id] = 0
+		Status[id] = "Nelogat"
+		set_task(1.0,"show_hud",id+0x464337,_,_,"b")
+		LoadData(id)
+		if(!count[id])
+			set_task(5.0,"give_money",id)
+		add_password(id)
+	}
+}
+public add_password(id) {
+	if(!is_user_connected(id))
+		return
+
+	if(cs_get_user_team(id) == CS_TEAM_T || cs_get_user_team(id) == CS_TEAM_CT || cs_get_user_team(id) == CS_TEAM_SPECTATOR)
+	{
+		if(iCard[id])
+		{
+			client_cmd(id,"messagemode")
+			color(id,"!team[CARD]!yAcest nume este securizat cu o parola,adaug-o!")
+			set_task(15.0,"add_kick",id+0x15555)
+		}
+	}
+	else
+		set_task(0.1,"add_password",id)
+}
+public give_money(id) {
+	if(is_user_connected(id))
+	{
+		if(count[id] == 1)
+			return 1
+
+		count[id] = 1
+		iMoney[id]+= get_pcvar_num(pcvar_money_player)
+		color(id,"!team[Banca]!yAi primit suma de !g%i$ !yin cont deoarece esti nou pe server.",get_pcvar_num(pcvar_money_player))
+	}
+	return 1
+}
+public client_disconnect(id) {
+	if(!is_user_bot(id) || !is_user_hltv(id))
+	{
+		SaveData(id)
+		remove_task(id+0x464337)
+		if(task_exists(id))
+			remove_task(id)
+		if(task_exists(id+0x15555))
+			remove_task(id+0x15555)
+		bCount[id] = 0
+		ii_count[id] = 0
+	}
+}
+public client_infochanged(id) {
+	SaveData(id)
+
+	new newname[32]
+	get_user_info(id,"name",newname,charsmax(newname))
+
+	if(!equal(newname,name(id)))
+		set_task(0.1,"change_name",id)
+}
+public change_name(id) {
+	LoadData(id)
+	Status[id] = "Nelogat"
+
+	if(iCard[id])
+	{
+		bCount[id] = 0
+		add_password(id)
+
+		if(task_exists(id+0x15555))
+			remove_task(id+0x15555)
+		set_task(15.0,"add_kick",id+0x15555)
+	}
+}
+public add_kick(id) {
+	id-= 0x15555
+	if(!is_user_connected(id))
+	{
+		remove_task(id+0x15555)
+		return 1
+	}
+	if(iCard[id] && !bCount[id])
+	{
+		server_cmd("kick #%i ^"Ai avut timp 15 secunde sa te loghezi!^"",get_user_userid(id))
+	}
+	return 1
+}
+public show_hud(id) {
+	id-= 0x464337
+
+	if(is_user_alive(id))
+	{
+		set_hudmessage(0,170,255,-1.0,0.85,0,6.0,1.2)
+		ShowSyncHudMsg(id,sync,"[Viata: %d | Armura: %d | Banca: %d $ | Status: %s]",get_user_health(id),get_user_armor(id),iMoney[id],Status[id])
+	}
+}
+public SaveData(id)
+{
+	new vaultkey[64],vaultdata[256]
+	formatex(vaultkey,charsmax(vaultkey),"%s-Bank",name(id))
+	formatex(vaultdata,charsmax(vaultdata),"%i %i %i %s ",iMoney[id],count[id],iCard[id],szPassword[id])
+	nvault_set(g_vault,vaultkey,vaultdata)
+}
+public LoadData(id)
+{
+	new name_e[32],vaultkey[64],vaultdata[256],imoney[32],iCount[32],card[32]
+	get_user_info(id,"name",name_e,charsmax(name_e))
+	formatex(vaultkey,charsmax(vaultkey),"%s-Bank",name_e)
+	formatex(vaultdata,charsmax(vaultdata),"%i %i %i %s ",iMoney[id],count[id],iCard[id],szPassword[id])
+	nvault_get(g_vault,vaultkey,vaultdata,charsmax(vaultdata))
+	parse(vaultdata,imoney,charsmax(imoney),iCount,charsmax(iCount),card,charsmax(card),szPassword[id],charsmax(szPassword[]))
+	iMoney[id] = str_to_num(imoney)
+	count[id] = str_to_num(iCount)
+	iCard[id] = str_to_num(card)
+}
+public plugin_end()
+	nvault_close(g_vault)
+
+stock name(id) {
+	new szName[32]
+	get_user_name(id,szName,charsmax(szName))
+	return szName
+}
+stock color(const id,const input[ ],any:...) {
+	new count = 1,players[32]
+
+	static msg[191]
+	vformat(msg,190,input,3)
+
+	replace_all(msg,190,"!g","^4")	//verde
+	replace_all(msg,190,"!y","^1") //- galben
+	replace_all(msg,190,"!team","^3") //- echipa
+	replace_all(msg,190,"!n","^0") //- normal
+
+	if(id) players[0] = id; else get_players(players,count,"ch")
+	{
+		for(new i = 0; i < count; i++)
+		{
+			if(is_user_connected(players))
+			{
+				message_begin(MSG_ONE_UNRELIABLE,get_user_msgid("SayText"),_,players)
+				write_byte(players)
+				write_string(msg)
+				message_end()
+			}
+		}
+	}
+}
