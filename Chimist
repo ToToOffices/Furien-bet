@@ -1,0 +1,301 @@
+
+1 Utilizare Drog = 1 Gram (2 kill-uri)
+
+Descarcare:
+Code: Select all
+
+#include <amxmodx>
+#include <amxmisc>
+#include <fun>
+#include <cstrike>
+#include <fakemeta>
+#include <hamsandwich>
+#include <engine>
+
+#define PLUGIN "Chimist/Chemist"
+#define VERSION "0.1"
+#define AUTHOR "mihay111/Gemini"
+
+// Configurarea șanselor de drop (în procente %)
+#define SANSA_NORMAL 35
+#define SANSA_HEADSHOT 75
+#define SANSA_CUTIT 100
+
+// Model și tip damage pentru Grenada Toxică
+#define MODEL_SMOKE_TOXIC "models/w_smokegrenade_toxica.mdl"
+#define DMG_NERVEGAS (1<<16)
+#define TASK_GAS_START 10000
+#define TASK_GAS_DMG 20000
+
+// Sunete native din Half-Life
+#define SUNET_HEAL "items/smallmedkit1.wav"
+#define SUNET_HURT "player/pl_pain2.wav"
+
+// Variabile jucători
+new g_fragmente[33];
+new g_medicamente[33];
+new g_toxine[33];
+new g_grenade_toxice[33];
+
+new Float:g_droguri[33];
+new g_droguri_utilizate[33];
+
+new bool:g_heal_utilizat[33];
+
+// Variabilă globală pentru mesajul de ecran
+new g_msgScreenFade;
+
+public plugin_precache() {
+    precache_model(MODEL_SMOKE_TOXIC);
+    precache_sound(SUNET_HEAL);
+    precache_sound(SUNET_HURT);
+}
+
+public plugin_init() {
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    
+    register_clcmd("say /chimist", "cmd_meniu_chimist");
+    register_clcmd("say_team /chimist", "cmd_meniu_chimist");
+    register_clcmd("say /heal", "cmd_heal");
+    register_clcmd("say_team /heal", "cmd_heal");
+    
+    register_event("DeathMsg", "Event_DeathMsg", "a");
+    register_event("HLTV", "Event_RoundStart", "a", "1=0", "2=0");
+    
+    register_forward(FM_SetModel, "fw_SetModel");
+    
+    // Inițializăm ID-ul mesajului de ScreenFade
+    g_msgScreenFade = get_user_msgid("ScreenFade");
+}
+
+public client_disconnected(id) {
+    g_fragmente[id] = 0;
+    g_medicamente[id] = 0;
+    g_toxine[id] = 0;
+    g_grenade_toxice[id] = 0;
+    g_droguri[id] = 0.0;
+    g_droguri_utilizate[id] = 0;
+    g_heal_utilizat[id] = false;
+}
+
+public Event_RoundStart() {
+    for(new i = 1; i <= 32; i++) {
+        g_heal_utilizat[i] = false;
+        g_droguri_utilizate[i] = 0;
+    }
+}
+
+// ---------------- DROP-URI ----------------
+public Event_DeathMsg() {
+    new killer = read_data(1);
+    new victim = read_data(2);
+    new headshot = read_data(3);
+    
+    new weapon[32];
+    read_data(4, weapon, sizeof(weapon) - 1);
+    
+    if(!is_user_connected(killer) || killer == victim)
+        return;
+        
+    g_droguri[killer] += 0.5;
+    client_print_color(killer, print_team_default, "^4[CHIMIST] ^1Ai primit ^30.5g ^1de droguri la acest kill.");
+        
+    new sansa_curenta = 0;
+    if(equal(weapon, "knife")) sansa_curenta = SANSA_CUTIT;
+    else if(headshot) sansa_curenta = SANSA_HEADSHOT;
+    else sansa_curenta = SANSA_NORMAL;
+    
+    if(random_num(1, 100) <= sansa_curenta) {
+        g_fragmente[killer]++;
+        client_print_color(killer, print_team_default, "^4[CHIMIST] ^1Ai primit un fragment de medicament.");
+    }
+    
+    if(random_num(1, 100) <= sansa_curenta) {
+        g_toxine[killer]++;
+        client_print_color(killer, print_team_default, "^4[CHIMIST] ^1Ai primit o toxina.");
+    }
+}
+
+// ---------------- MENIU ----------------
+public cmd_meniu_chimist(id) {
+    if(!is_user_connected(id)) return PLUGIN_HANDLED;
+    
+    new titlu[256];
+    formatex(titlu, charsmax(titlu), "\yFragmente:\w %d \y| Toxine:\w %d^n\yMedicamente:\w %d \y| Grenade toxice:\w %d \y| Droguri:\w %.1f g(rame)", 
+        g_fragmente[id], g_toxine[id], g_medicamente[id], g_grenade_toxice[id], g_droguri[id]);
+    
+    new meniu = menu_create(titlu, "handler_meniu_chimist");
+    new item_text[128];
+    
+    formatex(item_text, charsmax(item_text), "%sCreeaza medicament \y[3 Fragmente]", g_fragmente[id] >= 3 ? "\w" : "\d");
+    menu_additem(meniu, item_text, "1");
+    
+    formatex(item_text, charsmax(item_text), "%sCreeaza grenada toxica \y[5 Toxine]", g_toxine[id] >= 5 ? "\w" : "\d");
+    menu_additem(meniu, item_text, "2");
+    
+    if(g_droguri[id] >= 1.0 && g_droguri_utilizate[id] < 2) {
+        formatex(item_text, charsmax(item_text), "\wUtilizeaza un drog \y[1g]");
+        menu_additem(meniu, item_text, "3");
+    } else {
+        formatex(item_text, charsmax(item_text), "\dUtilizeaza un drog [1g] %s", g_droguri_utilizate[id] >= 2 ? "(Limita atinsa)" : "(Insuficient)");
+        menu_additem(meniu, item_text, "3");
+    }
+    
+    menu_setprop(meniu, MPROP_EXIT, MEXIT_ALL);
+    menu_display(id, meniu, 0);
+    
+    return PLUGIN_HANDLED;
+}
+
+public handler_meniu_chimist(id, meniu, item) {
+    if(item == MENU_EXIT || !is_user_connected(id)) {
+        menu_destroy(meniu);
+        return PLUGIN_HANDLED;
+    }
+    
+    new data[6], iName[64], access, callback;
+    menu_item_getinfo(meniu, item, access, data, 5, iName, 63, callback);
+    new key = str_to_num(data);
+    
+    if(key == 1) { 
+        if(g_fragmente[id] >= 3) {
+            g_fragmente[id] -= 3;
+            g_medicamente[id]++;
+            client_print_color(id, print_team_default, "^4[CHIMIST] ^1Medicament creat! Foloseste ^3/heal ^1pentru a-l folosi.");
+        }
+        cmd_meniu_chimist(id);
+    }
+    else if(key == 2) { 
+        if(is_user_alive(id) && g_toxine[id] >= 5) {
+            g_toxine[id] -= 5;
+            g_grenade_toxice[id]++;
+            give_item(id, "weapon_smokegrenade");
+            cs_set_user_bpammo(id, CSW_SMOKEGRENADE, cs_get_user_bpammo(id, CSW_SMOKEGRENADE) + 1);
+            client_print_color(id, print_team_default, "^4[CHIMIST] ^1Grenada Toxica adaugata in inventar!");
+        }
+        cmd_meniu_chimist(id);
+    }
+    else if(key == 3) { 
+        if(!is_user_alive(id)) {
+            client_print_color(id, print_team_default, "^4[CHIMIST] ^1Trebuie sa fii in viata!");
+        }
+        else if(g_droguri_utilizate[id] >= 2) {
+            client_print_color(id, print_team_default, "^4[CHIMIST] ^1Ai atins limita de 2 droguri runda aceasta!");
+        }
+        else if(g_droguri[id] >= 1.0) {
+            g_droguri[id] -= 1.0;
+            g_droguri_utilizate[id]++;
+            
+            new sansa_drog = random_num(1, 100);
+            if(sansa_drog <= 51) {
+                // SUCCES
+                new hp_castigat = random_num(1, 4);
+                set_user_health(id, get_user_health(id) + hp_castigat);
+                emit_sound(id, CHAN_ITEM, SUNET_HEAL, 1.0, ATTN_NORM, 0, PITCH_NORM);
+                
+                // Screen Fade Verde (Efect de scurtă durată)
+                Efect_ScreenFade(id, 0, 200, 0, 75); 
+                
+                client_print_color(id, print_team_default, "^4[CHIMIST] ^1Ai consumat drogul si a avut efect! Ai primit ^4+%d HP^1.", hp_castigat);
+            } else {
+                // EȘEC
+                new hp_curent = get_user_health(id);
+                if(hp_curent > 1) {
+                    set_user_health(id, hp_curent - 1);
+                } else {
+                    user_kill(id); 
+                }
+                emit_sound(id, CHAN_VOICE, SUNET_HURT, 1.0, ATTN_NORM, 0, PITCH_NORM);
+                
+                // Screen Fade Roșu
+                Efect_ScreenFade(id, 200, 0, 0, 85);
+                
+                client_print_color(id, print_team_default, "^4[CHIMIST] ^1Organismul a respins drogul! Ai pierdut ^3-1 HP^1.");
+            }
+        }
+        cmd_meniu_chimist(id);
+    }
+    
+    menu_destroy(meniu);
+    return PLUGIN_HANDLED;
+}
+
+// ---------------- FUNCȚIE SCREEN FADE ----------------
+stock Efect_ScreenFade(id, r, g, b, alpha) {
+    message_begin(MSG_ONE_UNRELIABLE, g_msgScreenFade, _, id);
+    write_short(1<<10);    // Durată (aprox. 1 secundă)
+    write_short(1<<10);    // Timp de menținere pe ecran
+    write_short(0x0000);   // Tipul de fade (Fade In)
+    write_byte(r);         // Culoare Red
+    write_byte(g);         // Culoare Green
+    write_byte(b);         // Culoare Blue
+    write_byte(alpha);     // Opacitate
+    message_end();
+}
+
+// ---------------- HEAL ----------------
+public cmd_heal(id) {
+    if(!is_user_alive(id)) return PLUGIN_HANDLED;
+    
+    if(g_medicamente[id] <= 0) {
+        client_print_color(id, print_team_default, "^4[CHIMIST] ^1Nu ai medicamente!");
+        return PLUGIN_HANDLED;
+    }
+    if(g_heal_utilizat[id]) {
+        client_print_color(id, print_team_default, "^4[CHIMIST] ^1Ai folosit deja un medicament runda aceasta!");
+        return PLUGIN_HANDLED;
+    }
+    
+    g_medicamente[id]--;
+    g_heal_utilizat[id] = true;
+    set_user_health(id, get_user_health(id) + 10);
+    
+    emit_sound(id, CHAN_ITEM, SUNET_HEAL, 1.0, ATTN_NORM, 0, PITCH_NORM);
+    
+    client_print_color(id, print_team_default, "^4[CHIMIST] ^1Te-ai vindecat cu ^4+10 HP^1! Medicamente ramase: ^4%d^1.", g_medicamente[id]);
+    
+    return PLUGIN_HANDLED;
+}
+
+// ---------------- GRENADA TOXICA ----------------
+public fw_SetModel(ent, const model[]) {
+    if(!pev_valid(ent)) return FMRES_IGNORED;
+    if(equal(model, "models/w_smokegrenade.mdl")) {
+        new owner = pev(ent, pev_owner);
+        if(is_user_connected(owner) && g_grenade_toxice[owner] > 0) {
+            g_grenade_toxice[owner]--; 
+            engfunc(EngFunc_SetModel, ent, MODEL_SMOKE_TOXIC); 
+            set_pev(ent, pev_iuser1, 999);
+            set_task(1.5, "Task_ToxicGas_Start", ent + TASK_GAS_START);
+            return FMRES_SUPERCEDE;
+        }
+    }
+    return FMRES_IGNORED;
+}
+
+public Task_ToxicGas_Start(taskid) {
+    new ent = taskid - TASK_GAS_START;
+    if(!pev_valid(ent)) return;
+    set_task(1.0, "Task_ToxicGas_Damage", ent + TASK_GAS_DMG, _, _, "a", 20);
+}
+
+public Task_ToxicGas_Damage(taskid) {
+    new ent = taskid - TASK_GAS_DMG;
+    if(!pev_valid(ent)) return;
+    
+    new classname[32];
+    pev(ent, pev_classname, classname, charsmax(classname));
+    if(!equal(classname, "grenade") || pev(ent, pev_iuser1) != 999) return;
+    
+    new Float:origin[3];
+    pev(ent, pev_origin, origin);
+    new owner = pev(ent, pev_owner);
+    new victim = -1;
+    
+    while((victim = engfunc(EngFunc_FindEntityInSphere, victim, origin, 200.0)) != 0) {
+        if(is_user_alive(victim)) {
+            ExecuteHamB(Ham_TakeDamage, victim, ent, owner, 3.0, DMG_NERVEGAS);
+        }
+    }
+}
+PUTE
