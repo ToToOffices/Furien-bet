@@ -1,0 +1,206 @@
+#include <amxmodx>
+#include <engine>
+#include <fakemeta>
+#include <hamsandwich>
+#include <fun>
+
+#define PLUGIN "Dark Monsters Event"
+#define VERSION "1.0"
+#define AUTHOR "ChatGPT"
+
+#define MONSTER_CLASSNAME "dark_monster"
+
+new bool:g_EventStarted
+new g_MaxPlayers
+
+new cvar_interval
+new cvar_duration
+new cvar_monsters
+new cvar_damage
+new cvar_health
+
+public plugin_precache()
+{
+    precache_model("models/player/gign/gign.mdl") // model monstru
+    precache_sound("ambience/thunder_clap.wav")
+}
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+
+    g_MaxPlayers = get_maxplayers()
+
+    cvar_interval = register_cvar("monster_event_interval", "300.0")
+    cvar_duration = register_cvar("monster_event_duration", "60.0")
+    cvar_monsters = register_cvar("monster_event_count", "5")
+    cvar_damage = register_cvar("monster_event_damage", "10")
+    cvar_health = register_cvar("monster_event_health", "100")
+
+    RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage")
+    
+    set_task(get_pcvar_float(cvar_interval), "start_event", _, _, _, "b")
+}
+
+public start_event()
+{
+    if(g_EventStarted)
+        return
+
+    g_EventStarted = true
+
+    client_print(0, print_chat, "[MONSTER] Intunericul a inceput...")
+    client_cmd(0, "spk ambience/thunder_clap.wav")
+
+    // intuneca harta
+    set_lights("b")
+
+    spawn_monsters()
+
+    set_task(get_pcvar_float(cvar_duration), "stop_event")
+}
+
+public stop_event()
+{
+    g_EventStarted = false
+
+    client_print(0, print_chat, "[MONSTER] Lumina a revenit.")
+
+    set_lights("#OFF")
+
+    remove_monsters()
+}
+
+public spawn_monsters()
+{
+    new count = get_pcvar_num(cvar_monsters)
+
+    for(new i=0; i<count; i++)
+    {
+        new ent = create_entity("info_target")
+
+        if(!ent)
+            continue
+
+        entity_set_string(ent, EV_SZ_classname, MONSTER_CLASSNAME)
+        entity_set_model(ent, "models/player/gign/gign.mdl")
+
+        entity_set_int(ent, EV_INT_movetype, MOVETYPE_STEP)
+        entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
+
+        new Float:origin[3]
+        origin[0] = random_float(-1000.0, 1000.0)
+        origin[1] = random_float(-1000.0, 1000.0)
+        origin[2] = 50.0
+
+        entity_set_origin(ent, origin)
+
+        new Float:mins[3] = {-16.0, -16.0, -36.0}
+        new Float:maxs[3] = {16.0, 16.0, 36.0}
+
+        entity_set_size(ent, mins, maxs)
+
+        entity_set_float(ent, EV_FL_health, get_pcvar_float(cvar_health))
+
+        set_task(0.2, "monster_think", ent, _, _, "b")
+    }
+}
+
+public monster_think(ent)
+{
+    if(!is_valid_ent(ent))
+        return
+
+    new target = find_nearest_player(ent)
+
+    if(target > 0)
+    {
+        new Float:monsterOrigin[3]
+        new Float:playerOrigin[3]
+        new Float:velocity[3]
+
+        entity_get_vector(ent, EV_VEC_origin, monsterOrigin)
+        entity_get_vector(target, EV_VEC_origin, playerOrigin)
+
+        velocity[0] = (playerOrigin[0] - monsterOrigin[0]) * 0.5
+        velocity[1] = (playerOrigin[1] - monsterOrigin[1]) * 0.5
+        velocity[2] = 0.0
+
+        entity_set_vector(ent, EV_VEC_velocity, velocity)
+
+        if(get_distance_f(monsterOrigin, playerOrigin) < 70.0)
+        {
+            new hp = get_user_health(target)
+            set_user_health(target, hp - get_pcvar_num(cvar_damage))
+        }
+    }
+
+    if(entity_get_float(ent, EV_FL_health) <= 0.0)
+    {
+        remove_entity(ent)
+    }
+}
+
+public find_nearest_player(ent)
+{
+    new Float:monsterOrigin[3]
+    entity_get_vector(ent, EV_VEC_origin, monsterOrigin)
+
+    new nearest = 0
+    new Float:bestDist = 99999.0
+
+    for(new i=1; i<=g_MaxPlayers; i++)
+    {
+        if(!is_user_alive(i))
+            continue
+
+        new Float:playerOrigin[3]
+        entity_get_vector(i, EV_VEC_origin, playerOrigin)
+
+        new Float:dist = get_distance_f(monsterOrigin, playerOrigin)
+
+        if(dist < bestDist)
+        {
+            bestDist = dist
+            nearest = i
+        }
+    }
+
+    return nearest
+}
+
+public fw_TakeDamage(victim, inflictor, attacker, Float:damage)
+{
+    if(is_valid_ent(victim))
+    {
+        static classname[32]
+        entity_get_string(victim, EV_SZ_classname, classname, charsmax(classname))
+
+        if(equal(classname, MONSTER_CLASSNAME))
+        {
+            new Float:hp = entity_get_float(victim, EV_FL_health)
+            hp -= damage
+
+            entity_set_float(victim, EV_FL_health, hp)
+
+            if(hp <= 0.0)
+            {
+                remove_entity(victim)
+            }
+
+            return HAM_SUPERCEDE
+        }
+    }
+
+    return HAM_IGNORED
+}
+
+public remove_monsters()
+{
+    new ent = -1
+
+    while((ent = find_ent_by_class(ent, MONSTER_CLASSNAME)))
+    {
+        remove_entity(ent)
+    }
+}
