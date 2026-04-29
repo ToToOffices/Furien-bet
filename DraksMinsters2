@@ -1,0 +1,287 @@
+#include <amxmodx>
+#include <engine>
+#include <fakemeta>
+#include <hamsandwich>
+#include <fun>
+
+#define PLUGIN "Dark Monster Event"
+#define VERSION "2.0"
+#define AUTHOR "ChatGPT"
+
+#define MONSTER_CLASS "dark_monster"
+
+new bool:g_EventStarted
+
+new gCvarInterval
+new gCvarDuration
+new gCvarCount
+new gCvarDamage
+new gCvarHealth
+new gCvarSpeed
+
+public plugin_precache()
+{
+    precache_model("models/zombie.mdl")
+    precache_sound("ambience/thunder_clap.wav")
+}
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+
+    gCvarInterval = register_cvar("dm_interval", "300")
+    gCvarDuration = register_cvar("dm_duration", "60")
+    gCvarCount    = register_cvar("dm_count", "5")
+    gCvarDamage   = register_cvar("dm_damage", "15")
+    gCvarHealth   = register_cvar("dm_health", "300")
+    gCvarSpeed    = register_cvar("dm_speed", "250")
+
+    register_think(MONSTER_CLASS, "MonsterThink")
+
+    RegisterHam(Ham_TakeDamage, "info_target", "MonsterTakeDamage")
+    register_logevent("RoundEnd", 2, "1=Round_End")
+
+    set_task(float(get_pcvar_num(gCvarInterval)), "StartDarkEvent", 1000, _, _, "b")
+}
+
+public StartDarkEvent()
+{
+    if(g_EventStarted)
+        return
+
+    if(GetAlivePlayers() <= 0)
+        return
+
+    g_EventStarted = true
+
+    client_print(0, print_chat, "[DarkEvent] Noaptea a inceput!")
+    client_cmd(0, "spk ambience/thunder_clap.wav")
+
+    set_lights("b")
+
+    SpawnMonsters()
+
+    set_task(float(get_pcvar_num(gCvarDuration)), "StopDarkEvent")
+}
+
+public StopDarkEvent()
+{
+    if(!g_EventStarted)
+        return
+
+    g_EventStarted = false
+
+    set_lights("#OFF")
+
+    client_print(0, print_chat, "[DarkEvent] Soarele a rasarit.")
+
+    RemoveAllMonsters()
+}
+
+public SpawnMonsters()
+{
+    new count = get_pcvar_num(gCvarCount)
+
+    for(new i=0; i<count; i++)
+    {
+        new player = GetRandomAlivePlayer()
+
+        if(!player)
+            continue
+
+        new Float:origin[3]
+        entity_get_vector(player, EV_VEC_origin, origin)
+
+        origin[0] += random_float(-300.0, 300.0)
+        origin[1] += random_float(-300.0, 300.0)
+
+        new ent = create_entity("info_target")
+
+        if(!ent)
+            continue
+/*
+entity_set_string(ent, EV_SZ_classname, MONSTER_CLASS)
+entity_set_model(ent, "models/zombie.mdl")
+
+// glow rosu inchis
+entity_set_int(ent, EV_INT_rendermode, kRenderNormal)
+entity_set_int(ent, EV_INT_renderfx, kRenderFxGlowShell)
+entity_set_vector(ent, EV_VEC_rendercolor, Float:{120.0, 0.0, 0.0})
+entity_set_float(ent, EV_FL_renderamt, 16.0)
+
+entity_set_origin(ent, origin)
+*/
+
+        entity_set_string(ent, EV_SZ_classname, MONSTER_CLASS)
+        entity_set_model(ent, "models/zombie.mdl")
+
+        entity_set_origin(ent, origin)
+
+        entity_set_int(ent, EV_INT_solid, SOLID_BBOX)
+        entity_set_int(ent, EV_INT_movetype, MOVETYPE_STEP)
+
+        new Float:mins[3] = {-16.0, -16.0, -36.0}
+        new Float:maxs[3] = {16.0, 16.0, 36.0}
+
+        entity_set_size(ent, mins, maxs)
+
+        entity_set_float(ent, EV_FL_health, float(get_pcvar_num(gCvarHealth)))
+
+        entity_set_float(ent, EV_FL_nextthink, get_gametime() + 0.2)
+    }
+}
+
+public MonsterThink(ent)
+{
+    if(!is_valid_ent(ent))
+        return
+
+    static classname[32]
+    entity_get_string(ent, EV_SZ_classname, classname, charsmax(classname))
+
+    if(!equal(classname, MONSTER_CLASS))
+        return
+
+    new target = FindNearestPlayer(ent)
+
+    if(target)
+    {
+        MoveToTarget(ent, target)
+        TryAttack(ent, target)
+    }
+
+    entity_set_float(ent, EV_FL_nextthink, get_gametime() + 0.2)
+}
+
+public MoveToTarget(ent, target)
+{
+    new Float:eOrigin[3], Float:pOrigin[3], Float:velocity[3]
+
+    entity_get_vector(ent, EV_VEC_origin, eOrigin)
+    entity_get_vector(target, EV_VEC_origin, pOrigin)
+
+    velocity[0] = pOrigin[0] - eOrigin[0]
+    velocity[1] = pOrigin[1] - eOrigin[1]
+    velocity[2] = 0.0
+
+    new Float:length = vector_length(velocity)
+
+    if(length > 0.0)
+    {
+        new Float:speed = float(get_pcvar_num(gCvarSpeed))
+
+        velocity[0] = velocity[0] / length * speed
+        velocity[1] = velocity[1] / length * speed
+    }
+
+    entity_set_vector(ent, EV_VEC_velocity, velocity)
+}
+
+public TryAttack(ent, target)
+{
+    new Float:eOrigin[3], Float:pOrigin[3]
+
+    entity_get_vector(ent, EV_VEC_origin, eOrigin)
+    entity_get_vector(target, EV_VEC_origin, pOrigin)
+
+    if(get_distance_f(eOrigin, pOrigin) <= 60.0)
+    {
+        ExecuteHam(Ham_TakeDamage,
+            target,
+            ent,
+            ent,
+            float(get_pcvar_num(gCvarDamage)),
+            DMG_SLASH)
+    }
+}
+
+public MonsterTakeDamage(victim, inflictor, attacker, Float:damage)
+{
+    if(!is_valid_ent(victim))
+        return HAM_IGNORED
+
+    static classname[32]
+    entity_get_string(victim, EV_SZ_classname, classname, charsmax(classname))
+
+    if(!equal(classname, MONSTER_CLASS))
+        return HAM_IGNORED
+
+    new Float:hp = entity_get_float(victim, EV_FL_health)
+    hp -= damage
+
+    if(hp <= 0.0)
+    {
+        remove_entity(victim)
+        return HAM_SUPERCEDE
+    }
+
+    entity_set_float(victim, EV_FL_health, hp)
+
+    return HAM_SUPERCEDE
+}
+
+public FindNearestPlayer(ent)
+{
+    new players[32], num
+    get_players(players, num, "a")
+
+    if(num <= 0)
+        return 0
+
+    new Float:eOrigin[3]
+    entity_get_vector(ent, EV_VEC_origin, eOrigin)
+
+    new nearest = 0
+    new Float:best = 999999.0
+
+    for(new i=0; i<num; i++)
+    {
+        new id = players[i]
+
+        new Float:pOrigin[3]
+        entity_get_vector(id, EV_VEC_origin, pOrigin)
+
+        new Float:dist = get_distance_f(eOrigin, pOrigin)
+
+        if(dist < best)
+        {
+            best = dist
+            nearest = id
+        }
+    }
+
+    return nearest
+}
+
+public GetRandomAlivePlayer()
+{
+    new players[32], num
+    get_players(players, num, "a")
+
+    if(num <= 0)
+        return 0
+
+    return players[random(num)]
+}
+
+public GetAlivePlayers()
+{
+    new players[32], num
+    get_players(players, num, "a")
+    return num
+}
+
+public RoundEnd()
+{
+    StopDarkEvent()
+}
+
+public RemoveAllMonsters()
+{
+    new ent = -1
+
+    while((ent = find_ent_by_class(ent, MONSTER_CLASS)))
+    {
+        remove_entity(ent)
+    }
+}
