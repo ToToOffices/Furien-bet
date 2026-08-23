@@ -1,0 +1,29 @@
+### Evenimente speciale
+
+**Evenimentele se desfășoară o dată la 4–6 runde.**
+
+* **Snowball Event** – Toți jucătorii primesc grenade în mod continuu. Scopul evenimentului este simplu: **eliminarea tuturor jucătorilor din echipa adversă**.
+
+* **Candy Event** – Toți jucătorii primesc **knife/lame** și nu au acces la celelalte arme. Scopul este **eliminarea tuturor adversarilor**.
+
+* **AWP Event** – Toți jucătorii primesc un **AWP** și trebuie să îl folosească pentru a elimina toți adversarii.
+
+* **Teleport Event** – Jocul se desfășoară în mod normal, însă toți jucătorii primesc abilitatea de a se **teleporta**, folosind tasta/bind-ul **[tasta teleport]**.
+
+* **Protect the God** – La începutul rundei, este ales aleatoriu câte un **lider pentru fiecare echipă**. Liderul primește **250 HP**, în timp ce restul jucătorilor primesc **50 HP**.
+  Dacă liderul unei echipe este ucis, **echipa respectivă pierde runda**. Dacă este eliminat un alt jucător decât liderul, acesta **reînvie automat**.
+
+* **Găsește intrusul** – Toți jucătorii primesc un **knife**. Dintre toți jucătorii este ales aleatoriu **un singur „intrus”**, care are abilitatea de a ucide orice jucător pe care îl întâlnește. Restul jucătorilor trebuie să **descopere cine este intrusul și să îl elimine** înainte ca acesta să îi omoare pe toți.
+
+* **Santa's Dream** – Un jucător este ales aleatoriu și devine **Grinch**. Acesta primește un knife și are misiunea de a-i vâna pe ceilalți jucători.
+  Restul jucătorilor își pierd accesul la arme și trebuie să **găsească toți brăduții**, care apar aleatoriu pe hartă. În timp ce aceștia caută, Grinch îi urmărește și încearcă să îi elimine.
+  După ce toți brăduții au fost găsiți, jucătorii trebuie să meargă la **Moș Crăciun**, de unde își pot recupera knife-ul. Cu acesta, trebuie să îl **găsească și să îl elimine pe Grinch**.
+
+* **Cold Event** – Jocul se desfășoară în mod normal, însă **frigul provoacă pierdere de HP** jucătorilor pe parcursul rundei. Scopul rămâne eliminarea echipei adverse înainte ca aceasta să te elimine.
+
+* **Monstrul Prăjitură** – Din ambele echipe este ales aleatoriu **un singur jucător**, care devine „Monstrul Prăjitură”. Acesta primește între **5.000 și 9.000 HP**, valoarea fiind stabilită în funcție de numărul total de jucători.
+  Toți ceilalți jucători trebuie să **coopereze și să îl elimine pe monstru**.
+  **Bonus:** Monstrul Prăjitură poate deveni nervos folosind **tasta G**, activând abilitatea specială.
+
+* **Boala Zahărului** – Funcționează asemănător cu **Monstrul Prăjitură**, însă monstrul are o abilitate suplimentară: poate **infecta ceilalți jucători** și îi poate transforma în aliații săi.
+  Jucătorii trebuie să îl elimine pe monstru **înainte ca infecția să se răspândească și întreaga echipă să ajungă de partea lui**.
