@@ -1,0 +1,90 @@
+Image Christmas Mod — Prezentare & Gameplay
+
+​
+Modul Christmas aduce un gameplay diferit, cu lideri de echipă, clase speciale, cadouri, magazine și o varietate de evenimente care pot schimba complet desfășurarea unei runde.
+
+
+
+ImagePe server se desfasoara 2 tipuri de evenimente:
+
+Round Event Se alege unul dintre cele 3 evenimente puse la dispozitie [disponibil prin vot]:
+
+ - Discount Map
+
+ - Double Map
+
+ - Presents Map 
+
+Pentru a avea acces la detaliile amanuntite despre acest tip de eveniment scrii in chat "/event".
+
+
+
+ImageAl 2-lea tip de eveniment se desfasoara o data la 4-6 runde. ( Poza: 6 )
+
+"Snowball Event" - toti jucatorii primesc grenade incontinuu iar scopul este sa ucizi toti inamicii
+
+"Candy Event" - toti jucatorii primesc lame iar scopul este sa ucizi toti inamicii
+
+"AWP Event" - toti jucatorii primesc awp cu scopul este de a ucide toti inamicii
+
+"Teleport Event" - jocul se desfasoara normal, doar ca ai abilitatea de a te teleporta [bind tasta teleport].
+
+"Protect the God" - este ales aleatoriu la fiecare echipa un lider, iar acesta primește 250HP, iar restul jucătorilor 50 HP, In caz ca liderul moare, echipa pierde, daca alt jucator moare acesta reinvie automat.
+
+"Găsește intrusul" - In aceasta rundă toți jucătorii primesc knife iar unu singur jucător este ales aleatoriu care va putea ucide pe oricine întâlnește, ceilalți trebuie să îl descopere și să îl oprească.(ucigandul)
+
+"Santa's Dream" - este ales aleatoriu din toti jucatorii un terorist [grinch] iar acesta primeste lama, restul de jucatori li se preia accesul la toate armele iar acestia trebuie sa gaseasca bradutii care sunt spawnati aleatoriu pe harta, grinch va vaneaza in acest timp, in cazul in care ati gasit toti bradutii, va duceti la mos craciun sa va luati cutitul si sa-l ucideti pe grinch.
+
+"Cold Events" -  jocul se desfasoara normal, doar ca frigul iti scade din viata.
+
+"Monstrul Prajitura"  - este ales aleatoriu din ambele echipe un singur monstru, acesta primește 5000HP  pana la 9000HP in functie de jucatori. trebuie sa se uneasca si sa il ucida.
+
+( Prajitura își poate elibera nervoziotatea actionant pe tasta G. )
+
+"Boala Zaharului" -  la fel ca la Monstrul Prajitura doar ca acesta are abilitatea de a ii infecta si pe ceilalti si de a ii aduce de partea lui.
+
+
+
+ImageExista 3 tipuri speciale de magazine:" ele pot fi deschise cu comanda pe chat /items" sau "M -> 3 / 4 / 5. ( Poza 4, 5 )
+
+Daca se desfasoara evenimentul Discount, preturile la acest magazin sunt injumatatite.
+
+• Primul magazin nu poate fi folosit in timpul evenimentelor de runda.
+
+• La fel ca in magazinul precedent, aceste iteme se stocheaza in contul tau.
+
+• Pe harta ve-ti gasi anumite cadouri, din ele poti primi puteri pasive suplimentare:
+
+• In rundele normale un jucator este ales lider de la fiecare echipa, iar acesta primeste bonus de HP si AP,daca acesta este omorat, la toti jucatorii le scad potentialul de a castiga runda scazandu-le la toti jucatorii din echipa cu 25% viata.
+
+- la deces el scapa un brad [santa] sau un om de zapada [grinch], acesta daca este atins de catre un coechipier sunt sanse de 50% sa reinvie liderul.
+
+• Pe mapa sunt spawnate diferite cadouri cu diferse iteme, acestea consta in diferite puteri si abilitati.
+
+• Modul contine diferite modele pentru playeri, atat sunete specifice modului cat si effecte.
+
+
+
+Class Menu (Poza: 2, 3 )
+
+•  Modul contine diferite classe pentru fiecare jucator, acesta se poate deschide prin comanda /class sau M- 2
+
+• Odata ce ti-ai ales classa aceasta se va reactiva la urmatorul spawn.
+
+•  Acestea contin diferite puteri dar si diferite abilitati.
+
+Comenzi playeri:
+
+/rs -> comanda de a iti reseta decesele.
+
+/change -> posibilitate de a schimba echipa.
+
+/dropgift -> iti poti arunca cadoul găsit.
+
+/class -> deschizi meniul și iti poti selecta o clasa.
+
+​
+
+Joacă, descoperă și profită de fiecare avantaj!
+În Christmas Mod, fiecare rundă poate fi diferită.
+Alege-ți clasa, caută cadourile, profită de abilitățile speciale și fii atent la evenimente — nu știi niciodată ce surpriză urmează !
