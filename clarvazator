@@ -1,0 +1,135 @@
+#include <amxmodx>
+#include <fakemeta>
+#include <hamsandwich>
+
+#define PLUGIN "Knife Wallhack Gift Native"
+#define VERSION "1.0"
+#define AUTHOR "AMXX Community"
+
+// BitSum pentru a urmări eficient jucătorii care au cadoul
+new g_bHasGift;
+
+#define SetUserGift(%1)    (g_bHasGift |= (1 << (%1 & 31)))
+#define ClearUserGift(%1)  (g_bHasGift &= ~(1 << (%1 & 31)))
+#define HasUserGift(%1)    (g_bHasGift & (1 << (%1 & 31)))
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    
+    // Înregistrare eveniment schimbare armă
+    register_event("CurWeapon", "Event_CurWeapon", "be", "1=1");
+    
+    // Resetare beneficiu la deces
+    register_event("DeathMsg", "Event_DeathMsg", "a");
+    
+    // Resetare la respawn (măsură de siguranță)
+    RegisterHam(Ham_Spawn, "player", "Fwd_PlayerSpawn_Post", 1);
+}
+
+public plugin_natives()
+{
+    // Înregistrăm native-urile pentru a fi folosite în alte pluginuri
+    register_native("give_knife_wallhack", "native_give_knife_wallhack", 1);
+    register_native("remove_knife_wallhack", "native_remove_knife_wallhack", 1);
+}
+
+// ==========================================
+// NATIVE IMPLEMENTATION
+// ==========================================
+
+public native_give_knife_wallhack(id)
+{
+    if (!is_user_alive(id))
+        return 0;
+
+    SetUserGift(id);
+    
+    // Dacă are deja cuțitul în mână când primește cadoul, îi aplicăm efectul imediat
+    if (get_user_weapon(id) == CSW_KNIFE)
+    {
+        ApplyWallhack(id, true);
+    }
+    
+    return 1;
+}
+
+public native_remove_knife_wallhack(id)
+{
+    if (!is_user_connected(id))
+        return 0;
+
+    ClearUserGift(id);
+    ApplyWallhack(id, false);
+    
+    return 1;
+}
+
+// ==========================================
+// EVENTS & HOOKS
+// ==========================================
+
+public Event_CurWeapon(id)
+{
+    if (!is_user_alive(id) || !HasUserGift(id))
+        return;
+
+    new iWeaponID = read_data(2);
+
+    // Verificăm dacă ține cuțitul în mână
+    if (iWeaponID == CSW_KNIFE)
+    {
+        ApplyWallhack(id, true);
+    }
+    else
+    {
+        ApplyWallhack(id, false);
+    }
+}
+
+public Event_DeathMsg()
+{
+    new iVictim = read_data(2);
+    
+    if (is_user_connected(iVictim))
+    {
+        ClearUserGift(iVictim);
+        ApplyWallhack(iVictim, false);
+    }
+}
+
+public Fwd_PlayerSpawn_Post(id)
+{
+    if (is_user_alive(id))
+    {
+        ClearUserGift(id);
+        ApplyWallhack(id, false);
+    }
+}
+
+public client_disconnected(id)
+{
+    ClearUserGift(id);
+    ApplyWallhack(id, false);
+}
+
+// ==========================================
+// FUNCTIE WALLHACK (Rendere prin pereți)
+// ==========================================
+
+stock ApplyWallhack(id, bool:bEnable)
+{
+    if (bEnable)
+    {
+        // Setăm efectul vizual pentru a vedea jucătorii/entitățile prin pereți (Glow x-ray)
+        set_pev(id, pev_effects, pev(id, pev_effects) | EF_BRIGHTFIELD);
+        
+        // Setează render-ul personajelor vizibil prin pereți pentru acest jucător
+        // (Opțiune de securitate Engine/Fakemeta)
+        set_es(es_solid, SOLID_NOT);
+    }
+    else
+    {
+        set_pev(id, pev_effects, pev(id, pev_effects) & ~EF_BRIGHTFIELD);
+    }
+}
