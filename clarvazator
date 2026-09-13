@@ -1,135 +1,170 @@
 #include <amxmodx>
+#include <cstrike>
 #include <fakemeta>
-#include <hamsandwich>
 
-#define PLUGIN "Knife Wallhack Gift Native"
+#define PLUGIN  "Clarvazator"
 #define VERSION "1.0"
-#define AUTHOR "AMXX Community"
+#define AUTHOR  "ChatGPT"
 
-// BitSum pentru a urmări eficient jucătorii care au cadoul
-new g_bHasGift;
-
-#define SetUserGift(%1)    (g_bHasGift |= (1 << (%1 & 31)))
-#define ClearUserGift(%1)  (g_bHasGift &= ~(1 << (%1 & 31)))
-#define HasUserGift(%1)    (g_bHasGift & (1 << (%1 & 31)))
+new bool:g_has_clarvazator[33];
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    
-    // Înregistrare eveniment schimbare armă
-    register_event("CurWeapon", "Event_CurWeapon", "be", "1=1");
-    
-    // Resetare beneficiu la deces
-    register_event("DeathMsg", "Event_DeathMsg", "a");
-    
-    // Resetare la respawn (măsură de siguranță)
-    RegisterHam(Ham_Spawn, "player", "Fwd_PlayerSpawn_Post", 1);
+
+    register_event("DeathMsg", "event_DeathMsg", "a");
+
+    register_forward(FM_AddToFullPack, "fw_AddToFullPack", 1);
 }
 
+/*
+ * =========================================================
+ * NATIVE-URI
+ * =========================================================
+ *
+ * Din pluginul de cadouri:
+ *
+ * clarvazator_set(id, true);  // primeste
+ * clarvazator_set(id, false); // pierde
+ *
+ * if (clarvazator_get(id))
+ * {
+ *     // are abilitatea
+ * }
+ */
 public plugin_natives()
 {
-    // Înregistrăm native-urile pentru a fi folosite în alte pluginuri
-    register_native("give_knife_wallhack", "native_give_knife_wallhack", 1);
-    register_native("remove_knife_wallhack", "native_remove_knife_wallhack", 1);
+    register_native("clarvazator_set", "native_clarvazator_set");
+    register_native("clarvazator_get", "native_clarvazator_get");
 }
 
-// ==========================================
-// NATIVE IMPLEMENTATION
-// ==========================================
+/*
+ * clarvazator_set(id, bool:status)
+ */
+public native_clarvazator_set(plugin_id, num_params)
+{
+    new id = get_param(1);
+    new bool:status = bool:get_param(2);
 
-public native_give_knife_wallhack(id)
+    if (id < 1 || id > 32)
+        return 0;
+
+    g_has_clarvazator[id] = status;
+
+    return 1;
+}
+
+/*
+ * clarvazator_get(id)
+ */
+public native_clarvazator_get(plugin_id, num_params)
+{
+    new id = get_param(1);
+
+    if (id < 1 || id > 32)
+        return 0;
+
+    return g_has_clarvazator[id] ? 1 : 0;
+}
+
+/*
+ * =========================================================
+ * MOARTE
+ * =========================================================
+ *
+ * La moarte pierde automat abilitatea.
+ */
+public event_DeathMsg()
+{
+    new victim = read_data(2);
+
+    if (victim >= 1 && victim <= 32)
+    {
+        g_has_clarvazator[victim] = false;
+    }
+}
+
+/*
+ * =========================================================
+ * DISCONNECT
+ * =========================================================
+ */
+public client_disconnect(id)
+{
+    g_has_clarvazator[id] = false;
+}
+
+/*
+ * =========================================================
+ * VERIFICARE CUTIT
+ * =========================================================
+ */
+bool:is_player_using_knife(id)
 {
     if (!is_user_alive(id))
-        return 0;
+        return false;
 
-    SetUserGift(id);
-    
-    // Dacă are deja cuțitul în mână când primește cadoul, îi aplicăm efectul imediat
-    if (get_user_weapon(id) == CSW_KNIFE)
-    {
-        ApplyWallhack(id, true);
-    }
-    
-    return 1;
+    return (get_user_weapon(id) == CSW_KNIFE);
 }
 
-public native_remove_knife_wallhack(id)
+/*
+ * =========================================================
+ * CLARVAZATOR
+ * =========================================================
+ *
+ * Efectul este trimis individual jucatorului care:
+ *
+ * 1. Are abilitatea Clarvazator
+ * 2. Este viu
+ * 3. Are cutitul scos
+ *
+ * Inamicii primesc GlowShell.
+ */
+public fw_AddToFullPack(es_handle, e, ent, host, hostflags, player, pSet)
 {
-    if (!is_user_connected(id))
-        return 0;
+    if (!player)
+        return FMRES_IGNORED;
 
-    ClearUserGift(id);
-    ApplyWallhack(id, false);
-    
-    return 1;
-}
+    // Hostul trebuie sa fie un jucator valid si viu.
+    if (!is_user_alive(host))
+        return FMRES_IGNORED;
 
-// ==========================================
-// EVENTS & HOOKS
-// ==========================================
+    // Hostul trebuie sa aiba Clarvazator.
+    if (!g_has_clarvazator[host])
+        return FMRES_IGNORED;
 
-public Event_CurWeapon(id)
-{
-    if (!is_user_alive(id) || !HasUserGift(id))
-        return;
+    // Hostul trebuie sa aiba cutitul.
+    if (!is_player_using_knife(host))
+        return FMRES_IGNORED;
 
-    new iWeaponID = read_data(2);
+    // Entitatea trebuie sa fie un jucator viu.
+    if (ent < 1 || ent > 32)
+        return FMRES_IGNORED;
 
-    // Verificăm dacă ține cuțitul în mână
-    if (iWeaponID == CSW_KNIFE)
-    {
-        ApplyWallhack(id, true);
-    }
-    else
-    {
-        ApplyWallhack(id, false);
-    }
-}
+    if (!is_user_alive(ent))
+        return FMRES_IGNORED;
 
-public Event_DeathMsg()
-{
-    new iVictim = read_data(2);
-    
-    if (is_user_connected(iVictim))
-    {
-        ClearUserGift(iVictim);
-        ApplyWallhack(iVictim, false);
-    }
-}
+    // Nu-si vede propriul glow.
+    if (ent == host)
+        return FMRES_IGNORED;
 
-public Fwd_PlayerSpawn_Post(id)
-{
-    if (is_user_alive(id))
-    {
-        ClearUserGift(id);
-        ApplyWallhack(id, false);
-    }
-}
+    // Doar inamicii.
+    if (cs_get_user_team(ent) == cs_get_user_team(host))
+        return FMRES_IGNORED;
 
-public client_disconnected(id)
-{
-    ClearUserGift(id);
-    ApplyWallhack(id, false);
-}
+    /*
+     * Glow rosu pentru inamic.
+     */
+    static color[3];
 
-// ==========================================
-// FUNCTIE WALLHACK (Rendere prin pereți)
-// ==========================================
+    color[0] = 255;
+    color[1] = 0;
+    color[2] = 0;
 
-stock ApplyWallhack(id, bool:bEnable)
-{
-    if (bEnable)
-    {
-        // Setăm efectul vizual pentru a vedea jucătorii/entitățile prin pereți (Glow x-ray)
-        set_pev(id, pev_effects, pev(id, pev_effects) | EF_BRIGHTFIELD);
-        
-        // Setează render-ul personajelor vizibil prin pereți pentru acest jucător
-        // (Opțiune de securitate Engine/Fakemeta)
-        set_es(es_solid, SOLID_NOT);
-    }
-    else
-    {
-        set_pev(id, pev_effects, pev(id, pev_effects) & ~EF_BRIGHTFIELD);
-    }
+    set_es(es_handle, ES_RenderFx, kRenderFxGlowShell);
+    set_es(es_handle, ES_RenderMode, kRenderNormal);
+    set_es(es_handle, ES_RenderAmt, 16);
+    set_es(es_handle, ES_RenderColor, color);
+
+    return FMRES_IGNORED;
 }
