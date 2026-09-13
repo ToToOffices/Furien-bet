@@ -1,0 +1,210 @@
+/*
+Da. Îl putem transforma într-un plugin API-only, fără comandă amx_cold, iar pluginul de cadouri va porni evenimentul prin native. La începutul rundei următoare, evenimentul se oprește automat și damage-ul nu mai este aplicat.
+Aș folosi două native:
+
+native cold_event_start();
+native cold_event_stop();
+
+și opțional:
+
+native bool:cold_event_is_active();
+În pluginul de cadouri
+
+Declari native-urile:
+
+native cold_event_start();
+native cold_event_stop();
+native bool:cold_event_is_active();
+
+Când cadoul/evenimentul începe:
+
+cold_event_start();
+
+Iar dacă vrei să-l oprești manual:
+
+cold_event_stop();
+
+Poți verifica dacă este activ:
+
+if (cold_event_is_active())
+{
+    // Cold Event este activ
+}
+*/
+#include <amxmodx>
+#include <fakemeta>
+#include <fun>
+
+#define PLUGIN  "Cold Event"
+#define VERSION "2.0"
+#define AUTHOR  "ChatGPT"
+
+// ==============================
+// CONFIG
+// ==============================
+
+#define DAMAGE_PER_TICK 5
+#define TICK_INTERVAL 5.0
+
+new const g_szColdSound[] = "cold_event/breath.wav";
+
+// ==============================
+// VARIABLES
+// ==============================
+
+new bool:g_bColdEvent = false;
+
+// ==============================
+// PLUGIN INIT
+// ==============================
+
+public plugin_precache()
+{
+    precache_sound(g_szColdSound);
+}
+
+public plugin_init()
+{
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+
+    /*
+     * Task permanent.
+     * Damage-ul se aplică doar când
+     * g_bColdEvent este true.
+     */
+    set_task(TICK_INTERVAL, "apply_cold_damage", _, _, _, "b");
+
+    /*
+     * La începutul unei runde noi,
+     * evenimentul se oprește automat.
+     */
+    register_event("HLTV", "event_new_round", "a", "1=0", "2=0");
+}
+
+// ==============================
+// NATIVES
+// ==============================
+
+public plugin_natives()
+{
+    register_native("cold_event_start", "native_cold_event_start");
+    register_native("cold_event_stop", "native_cold_event_stop");
+    register_native("cold_event_is_active", "native_cold_event_is_active");
+}
+
+// ==============================
+// START EVENT
+// ==============================
+
+public native_cold_event_start(plugin_id, num_params)
+{
+    start_cold_event();
+
+    return 1;
+}
+
+// ==============================
+// STOP EVENT
+// ==============================
+
+public native_cold_event_stop(plugin_id, num_params)
+{
+    stop_cold_event();
+
+    return 1;
+}
+
+// ==============================
+// CHECK EVENT
+// ==============================
+
+public native_cold_event_is_active(plugin_id, num_params)
+{
+    return g_bColdEvent ? 1 : 0;
+}
+
+// ==============================
+// START
+// ==============================
+
+start_cold_event()
+{
+    if (g_bColdEvent)
+        return;
+
+    g_bColdEvent = true;
+
+    client_print(0,print_chat,"[Cold Event] A inceput frigul! Aveti grija la viata!");
+}
+
+// ==============================
+// STOP
+// ==============================
+
+stop_cold_event()
+{
+    if (!g_bColdEvent)
+        return;
+
+    g_bColdEvent = false;
+
+    client_print(0,print_chat,"[Cold Event] Frigul a trecut!");
+}
+
+// ==============================
+// NEW ROUND
+// ==============================
+
+public event_new_round()
+{
+    /*
+     * Orice event activ este oprit
+     * automat la inceputul rundei urmatoare.
+     */
+    stop_cold_event();
+}
+
+// ==============================
+// COLD DAMAGE
+// ==============================
+
+public apply_cold_damage()
+{
+    if (!g_bColdEvent)
+        return;
+
+    new players[32];
+    new pnum;
+
+    get_players(players, pnum, "a");
+
+    for (new i = 0; i < pnum; i++)
+    {
+        new id = players[i];
+
+        if (!is_user_alive(id))
+            continue;
+
+        new health = get_user_health(id);
+
+        if (health > DAMAGE_PER_TICK)
+        {
+            set_user_health(id,health - DAMAGE_PER_TICK);
+
+            /*
+             * Sunet 3D positional.
+             */
+            emit_sound(id,CHAN_BODY,g_szColdSound,1.0,ATTN_NORM,0,PITCH_NORM);
+
+            client_print(id,print_center,"E frig... Pierzi %d HP!",DAMAGE_PER_TICK);
+        }
+        else
+        {
+            /*
+             * Omorare prin damage.
+             */
+            user_kill(id, 1);
+            client_print(id, print_center,"Ai murit din cauza frigului!");
+        }
+    }
+}
